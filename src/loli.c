@@ -8,6 +8,7 @@
 #include <efidef.h>
 #include <eficall.h>
 #include <efi.h>
+#include <interaction.h>
 
 Efi_Status
 _start(Efi_Handle imageHandle, Efi_System_Table *st)
@@ -16,6 +17,9 @@ _start(Efi_Handle imageHandle, Efi_System_Table *st)
 
 	efi_method(gST->conOut, outputString, L"Hello world\n");
 	efi_method(gST->conOut, outputString, L"Hello world2\n");
+
+	printf("Hello world %d %x %lx %u\n", -1, -1, 0xffffffffffffffff, -1);
+	printf("%x %d\n", 0x12345a5a, 1234);
 
 	return EFI_SUCCESS;
 }

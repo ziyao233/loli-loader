@@ -15,6 +15,7 @@ typedef unsigned long int uint64_t;
 typedef uint32_t uint_native;
 typedef uint8_t bool;
 typedef uint16_t wchar_t;
+typedef unsigned long int size_t;
 
 typedef void * Efi_Handle;
 typedef uint_native Efi_Status;
