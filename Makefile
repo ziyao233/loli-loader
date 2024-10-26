@@ -5,29 +5,35 @@
 
 CC		= clang -target riscv64-unknown-linux
 CCAS		= clang -target riscv64-unknown-linux
-LD		= ld.lld
+CCLD		= clang -target riscv64-unknown-linux
 OBJCOPY		= objcopy
-
-LINK_SCRIPT	= loli.ld
+PYTHON		= python
 
 CFLAGS		?= -ffreestanding -fno-stack-protector -fno-stack-check \
-		   -fpie -fPIC -fshort-wchar -nostdinc -DLOLI_TARGET_RISCV64
-CCASFLAGS	?= $(CFLAGS)
-LDFLAGS		= -T$(LINK_SCRIPT)
+		   -fPIE -fshort-wchar -DLOLI_TARGET_RISCV64 -static	\
+		   -nostdinc
 
-OBJS		= src/loli.o src/begin.o
+CCASFLAGS	?= $(CFLAGS)
+LDFLAGS		=
+
+OBJS		= src/loli.o src/efi.o
 
 default: loli.efi
 
-loli.efi: loli.so
-	$(OBJCOPY) -O binary loli.so loli.efi \
-		-j .text -j .rodata -j .data
+loli.efi: loli.elf
+	$(PYTHON) tools/elf2efi.py loli.elf loli.efi
 
-loli.so: $(OBJS)
-	$(LD) -o $@ $(LDFLAGS) $(OBJS)
+loli.elf: $(OBJS)
+	$(CCLD) -fPIE -o $@ $(LDFLAGS) $(OBJS) -nodefaultlibs -nostartfiles
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@ -Iinclude
 
 %.o: %.S
 	$(CCAS) $(CCASFLAGS) -c $< -o $@
+
+src/begin.o: src/begin.S
+	$(CCAS) -fPIC -fpie -c $< -o $@
+
+clean:
+	-rm $(OBJS)

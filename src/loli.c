@@ -10,11 +10,12 @@
 #include <efi.h>
 
 Efi_Status
-efi_main(Efi_Handle *imageHandle, Efi_System_Table *st)
+_start(Efi_Handle imageHandle, Efi_System_Table *st)
 {
-	// We need an EFI call wrapper
+	efi_init(imageHandle, st);
 
-	efi_method(st->conOut, outputString, L"Hello world\n");
+	efi_method(gST->conOut, outputString, L"Hello world\n");
+	efi_method(gST->conOut, outputString, L"Hello world2\n");
 
 	return EFI_SUCCESS;
 }

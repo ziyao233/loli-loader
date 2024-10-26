@@ -32,5 +32,8 @@ typedef struct {
 #pragma pack(pop)
 
 extern Efi_System_Table *gST;
+extern Efi_Handle gSelf;
+
+void efi_init(Efi_Handle imageHandle, Efi_System_Table *st);
 
 #endif	// __LOLI_EFI_H_INC__
