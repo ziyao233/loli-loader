@@ -8,6 +8,8 @@
 #ifndef __LOLI_EFIDEF_H_INC__
 #define __LOLI_EFIDEF_H_INC__
 
+#define NULL ((void *)0)
+
 typedef unsigned char uint8_t;
 typedef unsigned short int uint16_t;
 typedef unsigned int uint32_t;

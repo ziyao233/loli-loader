@@ -9,6 +9,7 @@
 #include <eficall.h>
 #include <efi.h>
 #include <interaction.h>
+#include <memory.h>
 
 Efi_Status
 _start(Efi_Handle imageHandle, Efi_System_Table *st)
@@ -18,13 +19,13 @@ _start(Efi_Handle imageHandle, Efi_System_Table *st)
 	efi_method(gST->conOut, outputString, L"Hello world\n");
 	efi_method(gST->conOut, outputString, L"Hello world2\n");
 
-	void *addr;
-	if (efi_call(gBS->allocatePool, EFI_LOADER_DATA, 32, &addr) !=
-	    EFI_SUCCESS)
+	void *addr = malloc(32);
+	if (!addr) {
 		printf("allocate failed\n");
-
-	printf("addr: %p\n", addr);
-	efi_call(gBS->freePool, addr);
+	} else {
+		printf("addr: %p\n", addr);
+		free(addr);
+	}
 
 	printf("Hello world %d %x %lx %u\n", -1, -1, 0xffffffffffffffff, -1);
 	printf("%x %d\n", 0x12345a5a, 1234);
