@@ -114,11 +114,16 @@ vsprintf(char *p, const char *format, va_list va)
 			*(p++) = *(format++);
 			break;
 		}
-		if (*format == 'l') {
+
+		switch (*format) {
+		case 'l':
 			format++;
+			// fallthrough
+		case 'p':
 			value = va_arg(va, long int);
 			longValue = 1;
-		} else {
+			break;
+		default:
 			value = va_arg(va, int);
 			longValue = 0;
 		}
@@ -133,6 +138,11 @@ vsprintf(char *p, const char *format, va_list va)
 		case 'u':
 			base = 10;
 			break;
+		case 'p':
+			p[0] = '0';
+			p[1] = 'x';
+			p += 2;
+			// fallthrough
 		case 'x':
 			base = 16;
 			break;

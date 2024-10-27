@@ -20,6 +20,16 @@ typedef unsigned long int size_t;
 typedef void * Efi_Handle;
 typedef uint_native Efi_Status;
 
-#define EFI_SUCCESS	0
+typedef struct Efi_Table_Header {
+	uint64_t signature;
+	uint32_t revision;
+	uint32_t headerSize;
+	uint32_t crc32;
+	uint32_t reserved;
+} Efi_Table_Header;
+
+#define EFI_SUCCESS			0
+#define EFI_INVALID_PARAMETER		2
+#define EFI_OUT_OF_RESOURCES		9
 
 #endif	// __LOLI_EFIDEF_H_INC__
