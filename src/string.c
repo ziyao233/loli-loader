@@ -65,7 +65,7 @@ wcs2str(char *str, const wchar_t *wcs)
 size_t
 str2wcs(wchar_t *wcs, const char *str)
 {
-	size_t len = wcslen(wcs);
+	size_t len = strlen(str);
 	if (!wcs)
 		return len;
 
@@ -81,7 +81,10 @@ itoa_n(char *out, unsigned long int n, int base)
 {
 	static const char digits[] = "0123456789abcdef";
 
-	out[0] = '0';
+	if (n == 0) {
+		out[0] = '0';
+		return 1;
+	}
 
 	int len = 0;
 	while (n) {
