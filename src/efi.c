@@ -8,6 +8,7 @@
 #include <efidef.h>
 #include <eficall.h>
 #include <efi.h>
+#include <file.h>
 
 Efi_System_Table *gST;
 Efi_Boot_Services *gBS;
@@ -18,5 +19,7 @@ void efi_init(Efi_Handle imageHandle, Efi_System_Table *st)
 	gST = st;
 	gBS = gST->bootServices;
 	gSelf = imageHandle;
+
+	file_init();
 }
 

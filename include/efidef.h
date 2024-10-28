@@ -18,6 +18,10 @@ typedef uint32_t uint_native;
 typedef uint8_t bool;
 typedef uint16_t wchar_t;
 typedef unsigned long int size_t;
+typedef signed char int8_t;
+typedef signed short int int16_t;
+typedef signed int int32_t;
+typedef signed long int int64_t;
 
 typedef void * Efi_Handle;
 typedef uint_native Efi_Status;

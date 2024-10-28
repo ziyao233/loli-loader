@@ -17,7 +17,7 @@ CCASFLAGS	?= $(CFLAGS)
 LDFLAGS		=
 
 OBJS		= src/loli.o src/efi.o src/string.o src/interaction.o \
-		  src/memory.o
+		  src/memory.o src/file.o
 
 default: loli.efi
 
