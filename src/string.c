@@ -116,6 +116,12 @@ vsprintf(char *p, const char *format, va_list va)
 		if (*format == '%') {
 			*(p++) = *(format++);
 			break;
+		} else if (*format == 's') {
+			format++;
+			const char *src = va_arg(va, const char *);
+			strcpy(p, src);
+			p += strlen(src);
+			break;
 		}
 
 		switch (*format) {
