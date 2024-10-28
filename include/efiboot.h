@@ -77,7 +77,10 @@ typedef struct {
 
 #pragma pack(pop)
 
-#define efi_handle_protocol(handle, protocol, interface) \
-	efi_call(gBS->handleProtocol, handle, protocol, (void **)(handle))
+#define efi_handle_protocol(handle, protocol, interface) do { \
+	Efi_Guid _guid = protocol;				\
+	efi_call(gBS->handleProtocol, handle, &_guid,		\
+		 (void **)(interface));				\
+} while (0)
 
 #endif	// __LOLI_EFIBOOT_H_INC__

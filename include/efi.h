@@ -14,7 +14,7 @@
 
 #pragma pack(push, 0)
 
-typedef struct {
+typedef struct Efi_System_Table {
 	Efi_Table_Header header;
 
 	wchar_t *firmwareVendor;
