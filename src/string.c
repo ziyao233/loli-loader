@@ -122,6 +122,10 @@ vsprintf(char *p, const char *format, va_list va)
 			strcpy(p, src);
 			p += strlen(src);
 			break;
+		} else if (*format == 'c') {
+			format++;
+			*(p++) = va_arg(va, int);
+			break;
 		}
 
 		switch (*format) {
