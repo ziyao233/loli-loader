@@ -14,12 +14,14 @@
 #pragma pack(push, 0)
 
 typedef uint_native Efi_Tpl;
+
 typedef enum {
 	ALLOCATE_ANY_PAGES,
 	ALLOCATE_MAX_ADDRESS,
 	ALLOCATE_ADDRESS,
 	MAX_ALLOCATE_TYPE
 } Efi_Allocate_Type;
+
 typedef enum {
 	EFI_RESERVED_MEMORY_TYPE,
 	EFI_LOADER_CODE,
@@ -54,8 +56,28 @@ typedef struct {
 	Efi_Status (*allocatePool)(Efi_Memory_Type type, uint_native size,
 				   void **buf);
 	Efi_Status (*freePool)(void *buf);
+
+	Efi_Handle createEvent;
+	Efi_Handle setTimer;
+	Efi_Handle waitForEvent;
+	Efi_Handle signalEvent;
+	Efi_Handle closeEvent;
+	Efi_Handle checkEvent;
+
+	Efi_Handle installProtocolInterface;
+	Efi_Handle reinstallProtocolInterface;
+	Efi_Handle uninstallProtocolInterface;
+	Efi_Status (*handleProtocol)(Efi_Handle handle, Efi_Guid *protocol,
+				     void **interface);
+	Efi_Handle registerProtocolNotify;
+	Efi_Handle locateHandle;
+	Efi_Handle locateDevicePath;
+	Efi_Handle installConfigurationTable;
 } Efi_Boot_Services;
 
 #pragma pack(pop)
+
+#define efi_handle_protocol(handle, protocol, interface) \
+	efi_call(gBS->handleProtocol, handle, protocol, (void **)(handle))
 
 #endif	// __LOLI_EFIBOOT_H_INC__

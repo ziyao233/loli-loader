@@ -30,6 +30,21 @@ typedef struct Efi_Table_Header {
 	uint32_t reserved;
 } Efi_Table_Header;
 
+#pragma pack(push, 4)
+
+typedef struct {
+	uint8_t data[16];
+} Efi_Guid;
+
+#pragma pack(pop)
+
+#define EFI_GUID(a, b, c, d0, d1, d2, d3, d4, d5, d6, d7) \
+	{{ (a) & 0xff, ((a) >> 8) & 0xff, ((a) >> 16) & 0xff,		\
+		((a) >> 24) & 0xff,					\
+		(b) & 0xff, ((b) >> 8) & 0xff,				\
+		(c) & 0xff, ((c) >> 8) & 0xff,				\
+		(d0), (d1), (d2), (d3), (d4), (d5), (d6), (d7) } }
+
 #define EFI_SUCCESS			0
 #define EFI_INVALID_PARAMETER		2
 #define EFI_OUT_OF_RESOURCES		9
