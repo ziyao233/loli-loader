@@ -81,7 +81,8 @@ file_load(const char *path, void **buf)
 	if (!file)
 		return -1;
 
-	*buf = malloc(size);
+	if (!*buf)
+		*buf = malloc(size);
 	uint_native bufSize = size;
 	efi_method(file, read, &bufSize, *buf);
 

@@ -34,7 +34,7 @@ _start(Efi_Handle imageHandle, Efi_System_Table *st)
 	printf("%x %d\n", 0x12345a5a, 1234);
 
 	printf("Length of test.txt is %ld\n", file_get_size("test.txt"));
-	char *buf;
+	char *buf = NULL;
 	int64_t size = file_load("test.txt", (void **)&buf);
 	printf("test.txt content:\n\t");
 	for (int i = 0; i < size; i++)
