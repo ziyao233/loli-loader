@@ -29,6 +29,33 @@ strcpy(char *dst, const char *src)
 	return org;
 }
 
+int
+strncmp(const char *s1, const char *s2, size_t n)
+{
+	while (*s1 && *s2) {
+		if (!n)
+			break;
+		n--;
+		if (*s1 != *s2)
+			break;
+		s1++;
+		s2++;
+	}
+	return *s1 - *s2;
+}
+
+int
+strcmp(const char *s1, const char *s2)
+{
+	while (*s1 && *s2) {
+		if (*s1 != *s2)
+			break;
+		s1++;
+		s2++;
+	}
+	return *s1 - *s2;
+}
+
 size_t
 wcslen(const wchar_t *p)
 {
@@ -170,4 +197,22 @@ vsprintf(char *p, const char *format, va_list va)
 	}
 
 	*p = '\0';
+}
+
+void *
+memcpy(void *dst, void *src, size_t n)
+{
+	char *pDst = dst, *pSrc = src;
+	while (n--)
+		*(pDst++) = *(pSrc++);
+	return dst;
+}
+
+void *
+memset(void *mem, int c, size_t n)
+{
+	char *p = mem;
+	while (n--)
+		*(p++) = c;
+	return mem;
 }

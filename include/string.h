@@ -13,6 +13,8 @@
 
 size_t strlen(const char *p);
 char *strcpy(char *dst, const char *src);
+int strcmp(const char *s1, const char *s2);
+int strncmp(const char *s1, const char *s2, size_t n);
 
 size_t wcslen(const wchar_t *p);
 wchar_t *wcscpy(wchar_t *dst, wchar_t *src);
@@ -21,5 +23,8 @@ size_t wcs2str(char *str, const wchar_t *wcs);
 size_t str2wcs(wchar_t *wcs, const char *str);
 
 void vsprintf(char *p, const char *format, va_list va);
+
+void *memcpy(void *dst, void *src, size_t n);
+void *memset(void *mem, int c, size_t n);
 
 #endif	// __LOLI_STRING_H_INC__
