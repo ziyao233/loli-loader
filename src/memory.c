@@ -6,6 +6,7 @@
  */
 
 #include <efi.h>
+#include <string.h>
 
 #include <memory.h>
 
@@ -22,5 +23,18 @@ malloc(size_t size)
 void
 free(void *p)
 {
-	efi_call(gBS->freePool, p);
+	if (p)
+		efi_call(gBS->freePool, p);
+}
+
+void *
+realloc(void *p, size_t size)
+{
+	void *new = NULL;
+	if (size) {
+		new = malloc(size);
+		memcpy(new, p, size);
+	}
+	free(p);
+	return new;
 }
