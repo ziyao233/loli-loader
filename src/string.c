@@ -216,3 +216,25 @@ memset(void *mem, int c, size_t n)
 		*(p++) = c;
 	return mem;
 }
+
+int
+atou(const char *s)
+{
+	if (!*s)
+		return -1;
+
+	int weight = 1, res = 0;
+	const char *p = s + strlen(s) - 1;
+
+	while (p >= s) {
+		if (*p < '0' || *p > '9')
+			return -1;
+
+		res += weight * (*p - '0');
+		weight *= 10;
+
+		p--;
+	}
+
+	return res;
+}

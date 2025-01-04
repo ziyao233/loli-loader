@@ -13,6 +13,7 @@
 #include <efiloadedimage.h>
 #include <memory.h>
 #include <file.h>
+#include <string.h>
 
 Efi_Status
 _start(Efi_Handle imageHandle, Efi_System_Table *st)
@@ -32,6 +33,7 @@ _start(Efi_Handle imageHandle, Efi_System_Table *st)
 
 	printf("Hello world %d %x %lx %u\n", -1, -1, 0xffffffffffffffff, -1);
 	printf("%x %d\n", 0x12345a5a, 1234);
+	printf("%d %d\n", 0, atou("12345678"));
 
 	printf("Length of test.txt is %ld\n", file_get_size("test.txt"));
 	char *buf = NULL;
