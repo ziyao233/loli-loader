@@ -16,8 +16,8 @@ CFLAGS		?= -ffreestanding -fno-stack-protector -fno-stack-check \
 CCASFLAGS	?= $(CFLAGS)
 LDFLAGS		=
 
-OBJS		= src/loli.o src/efi.o src/string.o src/interaction.o \
-		  src/memory.o src/file.o
+OBJS		= src/loli.o src/efi.o src/string.o src/interaction.o
+OBJS		+= src/memory.o src/file.o src/misc.o
 
 default: loli.efi
 
