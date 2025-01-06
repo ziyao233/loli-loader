@@ -14,6 +14,14 @@
 #include <memory.h>
 #include <file.h>
 #include <string.h>
+#include <extlinux.h>
+
+void
+printn(const char *p, size_t len)
+{
+	while (len--)
+		printf("%c", *(p++));
+}
 
 Efi_Status
 _start(Efi_Handle imageHandle, Efi_System_Table *st)
@@ -39,8 +47,30 @@ _start(Efi_Handle imageHandle, Efi_System_Table *st)
 	char *buf = NULL;
 	int64_t size = file_load("test.txt", (void **)&buf);
 	printf("test.txt content:\n\t");
-	for (int i = 0; i < size; i++)
-		printf("%c", buf[i]);
+	printn(buf, size);
+	free(buf);
+
+	size = file_get_size("extlinux.conf");
+	printf("Length of extlinux.conf is %ld\n", size);
+	buf = malloc(size + 1);
+	file_load("extlinux.conf", (void **)&buf);
+	printf("extlinux.conf content:\n");
+	printn(buf, size);
+	buf[size] = '\0';
+	printf("extlinux.conf boot entries\n");
+	int entryNum = 0;
+	for (const char *p = extlinux_next_entry(buf, NULL);
+	     p;
+	     p = extlinux_next_entry(NULL, p)) {
+		size_t namelen = 0;
+
+		const char *name = extlinux_get_value(p, "label", &namelen);
+		printf("%d: ", entryNum + 1);
+		printn(name, namelen);
+		printf("\n");
+
+		entryNum++;
+	}
 
 	return EFI_SUCCESS;
 }
