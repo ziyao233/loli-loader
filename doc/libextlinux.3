@@ -1,0 +1,96 @@
+.TH libextlinux 3 "libextlinux man-pages"
+.SH NAME
+extlinux_next_entry, extlinux_get_value
+.SH LIBRARY
+libextlinux
+.SH SYNOPSIS
+.nf
+.B "#include <extlinux.h>"
+.P
+.BI "const char *
+.BI "extlinux_next_entry(const char *" conf ", const char *" last ");"
+.P
+.BI "const char *"
+.BI "extlinux_get_value(const char *" entry ", const char *" key ","
+.BI "                   unsigned long int *" valuelen ");"
+.fl
+.SH DESCRIPTION
+.IR libextlinux
+is a simple library for parsing extlinux-like configuration, which contains
+multiple key-value pairs. Keys and corresponding values are splited by one or
+more whitespace, thus whitespaces aren't allowed in the key.
+.P
+Some pairs are grouped together as a boot entry.
+.I Label
+pair is special as it implies start of a new entry. Pairs defined before any
+entry are considered as global options. For example,
+.P
+.EX
+timeout 10
+label Linux 6.6
+        kernel  /Image-6.6
+        initrd  /initramfs-6.6.img
+        append  console=tty0 quiet
+label Linux 6.12
+        kernel  /Image-6.12
+        initrd  /initramfs-6.12.img
+        append  console=tty0 quiet
+.EE
+.P
+Here
+.I timeout
+is a global option. There're 2 entries ("Linux 6.6" and "Linux 6.12") here,
+each specifies its own
+.IR kernel ,
+.I initrd
+and
+.IR append .
+.P
+The configuration should be loaded into memory first and then
+global options could be retrieved through
+.I extlinux_get_value
+by passing the configuration as
+.IR entry "."
+It's also used to search for options scoped in a specific entry.
+.P
+To start an enumeration over all entries, pass the configuration and
+.I NULL
+to
+.I extlinux_next_entry
+to get a pointer to the first entry. After each iteration, pass
+.I NULL
+and the last visited entry to
+.I extlinux_next_entry
+to retrieve the next one.
+.SH RETURN VALUE
+.I extlinux_next_entry
+returns a pointer to the next entry. NULL is returned if it's called on the
+last entry.
+.P
+.I extlinux_get_value
+returns a pointer to value of the searched option. NULL is returned if it's
+not found.
+.SH EXAMPLES
+.EX
+for (char *entry = extlinux_next_entry(conf);
+     entry;
+     entry = extlinux_next_entry(entry)) {
+        size_t namelen;
+        char *p = extlinux_get_value(entry, "label", &namelen);
+        char *name = malloc(namelen + 1);
+        strlcpy(name, p, namelen + 1);
+
+        char *p = extlinux_get_value(entry, "kernel", &optlen);
+        char *kernel = "(not specified)";
+        if (p) {
+                kernel = malloc(optlen + 1);
+                strlcpy(kernel, p, optlen + 1);
+        }
+
+        printf("%s: kernel = %s\n", name, kernel);
+
+        free(name);
+        if (p)
+                free(kernel);
+}
+.EE
