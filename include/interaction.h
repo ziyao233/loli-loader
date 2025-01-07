@@ -9,6 +9,10 @@
 
 #include <efidef.h>
 
+#define EOF		-1
+
 void printf(const char *format, ...);
+int getchar_timeout(int timeout);
+char *getline_timeout(int timeout);
 
 #endif	// __LOLI_INTERACTION_H_INC__

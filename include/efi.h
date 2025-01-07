@@ -20,7 +20,7 @@ typedef struct Efi_System_Table {
 	wchar_t *firmwareVendor;
 	uint32_t firmwareRevision;
 	Efi_Handle consoleInHandle;
-	Efi_Handle conIn;
+	Efi_Simple_Text_Input_Protocol *conIn;
 	Efi_Handle consoleOutHandle;
 	Efi_Simple_Text_Output_Protocol *conOut;
 	Efi_Handle standardErrorHandle;

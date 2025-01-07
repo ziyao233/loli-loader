@@ -50,14 +50,14 @@ _start(Efi_Handle imageHandle, Efi_System_Table *st)
 	printn(buf, size);
 	free(buf);
 
-	size = file_get_size("extlinux.conf");
+	size = file_get_size("loli.cfg");
 	printf("Length of extlinux.conf is %ld\n", size);
 	buf = malloc(size + 1);
-	file_load("extlinux.conf", (void **)&buf);
-	printf("extlinux.conf content:\n");
+	file_load("loli.cfg", (void **)&buf);
+	printf("loli.cfg content:\n");
 	printn(buf, size);
 	buf[size] = '\0';
-	printf("extlinux.conf boot entries\n");
+	printf("loli.cfg boot entries\n");
 	int entryNum = 0;
 	for (const char *p = extlinux_next_entry(buf, NULL);
 	     p;
@@ -71,6 +71,13 @@ _start(Efi_Handle imageHandle, Efi_System_Table *st)
 
 		entryNum++;
 	}
+
+	char *line = getline_timeout(5);
+	if (!line)
+		printf("TIMEOUT!\n");
+	else
+		printf("read line `%s`\n", line);
+	free(line);
 
 	return EFI_SUCCESS;
 }

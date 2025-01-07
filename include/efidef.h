@@ -26,6 +26,7 @@ typedef signed long int int64_t;
 
 typedef void * Efi_Handle;
 typedef uint_native Efi_Status;
+typedef void * Efi_Event;
 
 typedef struct Efi_Table_Header {
 	uint64_t signature;

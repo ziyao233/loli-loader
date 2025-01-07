@@ -40,6 +40,15 @@ typedef enum {
 	EFI_MAX_MEMORY_TYPE
 } Efi_Memory_Type;
 
+#define EVT_TIMER			0x80000000
+#define EVT_NOTIFY_WAIT			0x00000100
+
+typedef enum {
+	EFI_TIMER_CANCEL = 0,
+	EFI_TIMER_PERIODIC,
+	EFI_TIMER_RELATIVE,
+} Efi_Type_Delay;
+
 typedef struct {
 	struct Efi_Table_Header header;
 
@@ -57,11 +66,15 @@ typedef struct {
 				   void **buf);
 	Efi_Status (*freePool)(void *buf);
 
-	Efi_Handle createEvent;
-	Efi_Handle setTimer;
-	Efi_Handle waitForEvent;
+	Efi_Status (*createEvent)(uint32_t type, Efi_Tpl notifyTpl,
+				  void *notifyFunction, void *notifyContext,
+				  Efi_Event *event);
+	Efi_Status (*setTimer)(Efi_Event event, Efi_Type_Delay type,
+			       uint64_t triggerTime);
+	Efi_Status (*waitForEvent)(uint_native numberOfEvents, Efi_Event *events,
+				   uint_native *index);
 	Efi_Handle signalEvent;
-	Efi_Handle closeEvent;
+	Efi_Status (*closeEvent)(Efi_Event event);
 	Efi_Handle checkEvent;
 
 	Efi_Handle installProtocolInterface;
