@@ -28,12 +28,12 @@ free(void *p)
 }
 
 void *
-realloc(void *p, size_t size)
+realloc(void *p, size_t oldSize, size_t size)
 {
 	void *new = NULL;
 	if (size) {
 		new = malloc(size);
-		memcpy(new, p, size);
+		memcpy(new, p, oldSize);
 	}
 	free(p);
 	return new;
