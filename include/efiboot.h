@@ -10,6 +10,7 @@
 
 #include <efi.h>
 #include <efidef.h>
+#include <efidevicepath.h>
 
 #pragma pack(push, 0)
 
@@ -82,10 +83,22 @@ typedef struct {
 	Efi_Handle uninstallProtocolInterface;
 	Efi_Status (*handleProtocol)(Efi_Handle handle, Efi_Guid *protocol,
 				     void **interface);
+	Efi_Handle reserved;
 	Efi_Handle registerProtocolNotify;
 	Efi_Handle locateHandle;
 	Efi_Handle locateDevicePath;
 	Efi_Handle installConfigurationTable;
+
+	Efi_Status (*loadImage)(bool bootPolicy, Efi_Handle parentHandle,
+				Efi_Device_Path_Protocol *devicePath,
+				void *sourceBuffer, uint64_t sourceSize,
+				Efi_Handle *imageHandle);
+	Efi_Status (*startImage)(Efi_Handle imageHandle,
+				 uint_native exitDataSize,
+				 wchar_t **exitdata);
+	Efi_Handle exit;
+	Efi_Status (*unloadImage)(Efi_Handle imageHandle);
+	Efi_Handle exitBootServices;
 } Efi_Boot_Services;
 
 #pragma pack(pop)
