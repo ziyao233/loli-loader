@@ -5,15 +5,25 @@
  *	Copyright (c) 2024 Yao Zi.
  */
 
-#include <efidef.h>
+#include <efi.h>
+#include <eficall.h>
 #include <stdarg.h>
 #include <interaction.h>
 
 #include <misc.h>
 
 void
-panic(void)
+panic(const char *msg)
 {
-	printf("panic: cannot boot\n");
+	printf("PANIC:");
+
+	wchar_t tmp[2] = { 0, 0 };
+	while (*msg) {
+		tmp[0] = *msg;
+		efi_method(gST->conOut, outputString, tmp);
+		msg++;
+	}
+
+	printf("PANIC: can't boot\n");
 	while (1) ;
 }

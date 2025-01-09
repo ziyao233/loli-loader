@@ -43,18 +43,18 @@ getchar_timeout(int timeout)
 	if (timeout) {
 		if (efi_call(gBS->createEvent, EVT_TIMER, 0, NULL, NULL,
 			     &events[1]) != EFI_SUCCESS)
-			panic();
+			panic("Can't create timer event");
 
 		if (efi_call(gBS->setTimer, events[1], EFI_TIMER_RELATIVE,
 			     timeout * 1000 * 1000 * 10) != EFI_SUCCESS)
-			panic();
+			panic("Can't configure timer");
 
 		eventNum++;
 	}
 
 	uint_native index = 0;
 	if (efi_call(gBS->waitForEvent, eventNum, events, &index) != EFI_SUCCESS)
-		panic();
+		panic("error occurs when waiting for events");
 
 	if (timeout) {
 		efi_call(gBS->closeEvent, events[1]);
@@ -65,7 +65,7 @@ getchar_timeout(int timeout)
 
 	Efi_Input_Key key;
 	if (efi_method(gST->conIn, readKeyStroke, &key) != EFI_SUCCESS)
-		panic();
+		panic("Can't read inputs");
 
 	return key.unicodeChar;
 }

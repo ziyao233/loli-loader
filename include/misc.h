@@ -23,6 +23,6 @@
 #define pr_warn(...)	do_log(1, __VA_ARGS__)
 #define pr_info(...)	do_log(2, __VA_ARGS__)
 
-void panic(void);
+void panic(const char *msg);
 
 #endif	// __LOLI_MISC_H_INC__
