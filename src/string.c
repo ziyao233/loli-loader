@@ -238,3 +238,17 @@ atou(const char *s)
 
 	return res;
 }
+
+size_t
+strscpy(char *dst, const char *src, size_t dstlen)
+{
+	size_t n = 0;
+	while (n < dstlen - 1 && *src) {
+		*(dst++) = *(src++);
+		n++;
+	}
+
+	*dst = '\0';
+
+	return n;
+}

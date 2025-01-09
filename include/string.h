@@ -28,4 +28,6 @@ void *memcpy(void *dst, void *src, size_t n);
 void *memset(void *mem, int c, size_t n);
 int atou(const char *p);
 
+size_t strscpy(char *dst, const char *src, size_t len);
+
 #endif	// __LOLI_STRING_H_INC__
