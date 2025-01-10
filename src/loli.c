@@ -92,6 +92,25 @@ get_entry(const char *cfg, int index)
 	return entry;
 }
 
+
+static void
+setup_append(Efi_Handle kernelHandle, char *append)
+{
+	Efi_Loaded_Image_Protocol *kernelImage = NULL;
+
+	efi_handle_protocol(kernelHandle, EFI_LOADED_IMAGE_PROTOCOL_GUID,
+			    &kernelImage);
+
+	size_t appendLen = strlen(append) + 1;
+	size_t wAppendLen = appendLen * sizeof(wchar_t);
+	wchar_t *wAppend = malloc(wAppendLen);
+
+	str2wcs(wAppend, append);
+
+	kernelImage->loadOptions	= wAppend;
+	kernelImage->loadOptionSize	= wAppendLen;
+}
+
 static int
 load_efi_image(Boot_Entry *entry, void *kernelBase, int64_t kernelSize)
 {
@@ -116,13 +135,13 @@ load_efi_image(Boot_Entry *entry, void *kernelBase, int64_t kernelSize)
 static int
 load_and_validate_entry(const char *p, Boot_Entry *entry)
 {
+	/* Releasing of temporary objects is delayed until everything sets up */
 	char *kernel = get_pair(p, "kernel");
 	if (!kernel) {
 		pr_err("No kernel defined for the entry!\n");
 		goto out_err;
 	}
 
-	// We release the original kernel image after everything setups up
 	void *kernelBase = NULL;
 	int64_t kernelSize = file_load(kernel, &kernelBase);
 
@@ -135,14 +154,23 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 
 	if (load_efi_image(entry, kernelBase, kernelSize)) {
 		pr_err("Can't load kernel %s\n", kernel);
-		goto free_kernel;
+		goto free_kernel_base;
 	}
 
+	char *append = get_pair(p, "append");
+	pr_info("Append: %s\n", append ? append : "(none)");
+
+	setup_append(entry->kernelHandle, append);
+
+	free(kernel);
 	free(kernelBase);
+	free(append);
 
 	return 0;
-free_kernel:
+free_kernel_base:
 	free(kernelBase);
+free_kernel:
+	free(kernel);
 out_err:
 	return -1;
 }
