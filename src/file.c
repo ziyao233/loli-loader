@@ -14,6 +14,8 @@
 #include <memory.h>
 #include <string.h>
 
+#include <misc.h>
+
 static Efi_File_Protocol *root;
 
 void
@@ -33,7 +35,7 @@ static Efi_File_Protocol *
 open_file_handle(const char *path)
 {
 	size_t wlen = str2wcs(NULL, path);
-	wchar_t *wpath = malloc(sizeof(wchar_t) * wlen);
+	wchar_t *wpath = malloc(sizeof(wchar_t) * (wlen + 1));
 	str2wcs(wpath, path);
 
 	Efi_File_Protocol *file = NULL;
