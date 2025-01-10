@@ -15,7 +15,7 @@
 void
 panic(const char *msg)
 {
-	printf("PANIC:");
+	printf("PANIC: ");
 
 	wchar_t tmp[2] = { 0, 0 };
 	while (*msg) {
@@ -24,6 +24,6 @@ panic(const char *msg)
 		msg++;
 	}
 
-	printf("PANIC: can't boot\n");
+	printf("\nPANIC: can't boot\n");
 	while (1) ;
 }
