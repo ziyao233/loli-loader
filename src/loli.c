@@ -16,6 +16,8 @@
 #include <string.h>
 #include <extlinux.h>
 #include <misc.h>
+#include <efidevicetree.h>
+#include <fdt.h>
 
 #define LOLI_CFG "loli.cfg"
 
@@ -132,6 +134,23 @@ load_efi_image(Boot_Entry *entry, void *kernelBase, int64_t kernelSize)
 			&entry->kernelHandle) != EFI_SUCCESS;
 }
 
+static void
+setup_initrd(void *base, int64_t size)
+{
+	struct {
+		uint_native base;
+		uint_native size;
+	} *initrd = malloc(sizeof(*initrd));
+
+	initrd->base = (uint_native)base;
+	initrd->size = (uint_native)size;
+
+	efi_install_configuration_table(
+		EFI_GUID(0x5568e427, 0x68fc, 0x4f3d,
+			 0xac, 0x74, 0xca, 0x55, 0x52, 0x31, 0xcc, 0x68),
+		initrd);
+}
+
 static int
 load_and_validate_entry(const char *p, Boot_Entry *entry)
 {
@@ -142,19 +161,51 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 		goto out_err;
 	}
 
-	void *kernelBase = NULL;
-	int64_t kernelSize = file_load(kernel, &kernelBase);
-
+	int64_t kernelSize = file_get_size(kernel);
 	if (kernelSize < 0) {
+		pr_err("Can't load kernel %s\n", kernel);
+		goto out_err;
+	}
+
+	void *kernelBase = malloc_pages(kernelSize);
+	int64_t ret = file_load(kernel, &kernelBase);
+	if (ret < 0) {
 		pr_err("Can't load kernel %s\n", kernel);
 		goto free_kernel;
 	}
 
-	pr_info("Kernel: %s, size = %lu\n", kernel, kernelSize);
-
 	if (load_efi_image(entry, kernelBase, kernelSize)) {
 		pr_err("Can't load kernel %s\n", kernel);
 		goto free_kernel_base;
+	}
+
+	pr_info("Kernel %s, size = %lu\n", kernel, kernelSize);
+
+	char *initrd = get_pair(p, "initrd");
+	if (initrd) {
+#define MiB	1024 * 1024
+		int64_t initrdSize = file_get_size(initrd);
+		if (initrdSize < 0) {
+			pr_err("Can't load initrd %s\n", initrd);
+			goto unload_image;
+		}
+
+		/*
+		 *	We reserve 2MiB memory ahead the initrd start and
+		 *	2MiB after its end, to avoid RISC-V kernel considers
+		 *	kernel and initrd overlaps.
+		 */
+		void *initrdBase = malloc_pages(initrdSize + 4 * MiB);
+		initrdBase = (char *)initrdBase + 2 * MiB;
+		initrdSize = file_load(initrd, &initrdBase);
+		if (initrdSize < 0) {
+			pr_err("Can't load initrd %s\n", initrd);
+			goto unload_image;
+		}
+
+		setup_initrd(initrdBase, initrdSize);
+	} else {
+		pr_info("Initrd: (none)\n");
 	}
 
 	char *append = get_pair(p, "append");
@@ -163,16 +214,79 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 	setup_append(entry->kernelHandle, append);
 
 	free(kernel);
-	free(kernelBase);
+	free_pages(kernelBase, kernelSize);
 	free(append);
 
 	return 0;
+unload_image:
+	efi_call(gBS->unloadImage, entry->kernelHandle);
 free_kernel_base:
-	free(kernelBase);
+	free_pages(kernelBase, kernelSize);
 free_kernel:
 	free(kernel);
 out_err:
 	return -1;
+}
+
+static Fdt_Header *
+search_for_devicetree(size_t *size)
+{
+	Fdt_Header *fdt = NULL;
+
+	for (uint_native i = 0; i < gST->numberOfTableEntries; i++) {
+		Efi_Configuration_Table *t = gST->configurationTable + i;
+
+		Efi_Guid dtbGuid = EFI_DTB_TABLE_GUID;
+		if (!memcmp(&dtbGuid, &t->vendorGuid, sizeof(Efi_Guid))) {
+			fdt = t->vendorTable;
+			break;
+		}
+	}
+
+	if (!fdt)
+		return NULL;
+
+	/* TODO: check compatibility */
+	*size = fdt->totalSize;
+	return fdt;
+}
+
+static void
+setup_dt(void)
+{
+	size_t fdtSize = 0;
+	Fdt_Header *fdt = search_for_devicetree(&fdtSize);
+
+	if (!fdt) {
+		pr_info("DeviceTree: not found\n");
+		return;
+	}
+
+	pr_info("devicetree: found, size %lu\n", fdtSize);
+
+	/* TODO: don't use a hard size limit */
+	size_t copySize = fdtSize + 4096;
+	Fdt_Header *copy = malloc(copySize);
+	memcpy(copy, fdt, fdtSize);
+
+	Efi_Dt_Fixup_Protocol *dtp = NULL;
+	Efi_Guid dtFixupGuid = EFI_DT_FIXUP_PROTOCOL_GUID;
+	int ret = efi_call(gBS->locateProtocol, &dtFixupGuid, NULL, (void **)&dtp);
+	if (!dtp) {
+		free(copy);
+		pr_info("EFI_DT_FIXUP_PROTOCOL isn't supported, "
+			"apply no fixup\n");
+		return;
+	}
+
+	ret = efi_method(dtp, fixup, copy, &copySize,
+					 EFI_DT_APPLY_FIXES | EFI_DT_RESERVE_MEMORY);
+	if (ret == EFI_SUCCESS)
+		pr_info("devicetree: applied fixes\n");
+	else
+		pr_info("devicetree: failed to apply fixes\n");
+
+	efi_install_configuration_table(EFI_DTB_TABLE_GUID, copy);
 }
 
 Efi_Status
@@ -190,6 +304,7 @@ _start(Efi_Handle imageHandle, Efi_System_Table *st)
 	cfgSize = file_load(LOLI_CFG, (void **)&cfg);
 	if (cfgSize < 0)
 		panic("Can't load configuration");
+	cfg[cfgSize] = '\0';
 
 	int timeout = retrieve_timeout(cfg);
 	int entryNum = 0;
@@ -208,7 +323,6 @@ _start(Efi_Handle imageHandle, Efi_System_Table *st)
 
 	const char *entry = NULL;
 	Boot_Entry bootEntry = { NULL };
-retry:
 	for (int selectedEntry = wait_for_boot_entry(timeout); ;
 	     selectedEntry = wait_for_boot_entry(0)) {
 		timeout = 0;
@@ -223,6 +337,8 @@ retry:
 				pr_err("Invalid entry\n");
 		}
 	}
+
+	setup_dt();
 
 	return efi_call(gBS->startImage, bootEntry.kernelHandle, 0, NULL);
 }

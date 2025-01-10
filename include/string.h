@@ -30,4 +30,6 @@ int atou(const char *p);
 
 size_t strscpy(char *dst, const char *src, size_t len);
 
+int memcmp(void *a, void *b, size_t len);
+
 #endif	// __LOLI_STRING_H_INC__

@@ -252,3 +252,19 @@ strscpy(char *dst, const char *src, size_t dstlen)
 
 	return n;
 }
+
+int
+memcmp(void *a, void *b, size_t len)
+{
+	char *c = a, *d = b;
+	while (len--) {
+		if (*c != *d)
+			return *c - *d;
+
+		c++;
+		d++;
+		len--;
+	}
+
+	return 0;
+}

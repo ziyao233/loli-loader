@@ -87,7 +87,7 @@ typedef struct {
 	Efi_Handle registerProtocolNotify;
 	Efi_Handle locateHandle;
 	Efi_Handle locateDevicePath;
-	Efi_Handle installConfigurationTable;
+	Efi_Status (*installConfigurationTable)(Efi_Guid *guid, void *table);
 
 	Efi_Status (*loadImage)(bool bootPolicy, Efi_Handle parentHandle,
 				Efi_Device_Path_Protocol *devicePath,
@@ -99,6 +99,24 @@ typedef struct {
 	Efi_Handle exit;
 	Efi_Status (*unloadImage)(Efi_Handle imageHandle);
 	Efi_Handle exitBootServices;
+
+	Efi_Handle getNextMonotonicCount;
+	Efi_Handle stall;
+	Efi_Handle setWatchdogTimer;
+
+	Efi_Handle connectController;
+	Efi_Handle disconnectController;
+
+	Efi_Handle openProtocol;
+	Efi_Handle closeProtocol;
+	Efi_Handle openProtocolInformation;
+
+	Efi_Handle protocolsPerHandle;
+	Efi_Handle locateHandleBuffer;
+	Efi_Status (*locateProtocol)(Efi_Guid *protocol, void *registration,
+				     void **interfaces);
+	Efi_Handle installMultipleProtocolInterfaces;
+	Efi_Handle uninstallMultipleProtocolInterfaces;
 } Efi_Boot_Services;
 
 #pragma pack(pop)
@@ -107,6 +125,11 @@ typedef struct {
 	Efi_Guid _guid = protocol;				\
 	efi_call(gBS->handleProtocol, handle, &_guid,		\
 		 (void **)(interface));				\
+} while (0)
+
+#define efi_install_configuration_table(guid, table) do { \
+	Efi_Guid _guid = guid;						\
+	efi_call(gBS->installConfigurationTable, &_guid, table);	\
 } while (0)
 
 #endif	// __LOLI_EFIBOOT_H_INC__
