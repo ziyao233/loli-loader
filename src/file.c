@@ -39,9 +39,18 @@ open_file_handle(const char *path)
 	str2wcs(wpath, path);
 
 	Efi_File_Protocol *file = NULL;
+retry:
 	if (efi_method(root, open, &file, wpath, EFI_FILE_MODE_READ, 0) !=
 	    EFI_SUCCESS)
 		file = NULL;
+
+	/* EDK2 compatibility: EDK2 doesn't accept paths starting with '/' */
+	if (!file && (char)wpath[0] == '/') {
+		for (size_t i = 0; i < wlen - 1; i++)
+			wpath[i] = wpath[i + 1];
+		wpath[wlen - 1] = 0;
+		goto retry;
+	}
 
 	free(wpath);
 	return file;
