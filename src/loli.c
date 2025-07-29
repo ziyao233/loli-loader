@@ -216,7 +216,6 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 	setup_append(entry->kernelHandle, append);
 
 	free(kernel);
-	free_pages(kernelBase, kernelSize);
 	free(append);
 
 	return 0;
