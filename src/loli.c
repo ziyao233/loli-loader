@@ -203,6 +203,8 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 			goto unload_image;
 		}
 
+		pr_info("Initrd %s, size = %lu\n", initrd, initrdSize);
+
 		setup_initrd(initrdBase, initrdSize);
 	} else {
 		pr_info("Initrd: (none)\n");
