@@ -340,5 +340,9 @@ _start(Efi_Handle imageHandle, Efi_System_Table *st)
 
 	setup_dt();
 
-	return efi_call(gBS->startImage, bootEntry.kernelHandle, 0, NULL);
+	int ret = efi_call(gBS->startImage, bootEntry.kernelHandle, NULL, NULL);
+	pr_err("Failed to start image: %d\n", ret);
+	panic("Cannot boot selected entry");
+
+	return ret;
 }
