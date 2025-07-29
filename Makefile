@@ -7,7 +7,6 @@ ARCH		= $(shell uname -m)
 CC		= clang
 CCAS		= clang
 CCLD		= clang
-OBJCOPY		= objcopy
 PYTHON		= python
 
 CONFIG_$(ARCH)	= yes
@@ -38,9 +37,6 @@ loli.elf: $(OBJS)
 
 %.o: %.S
 	$(CCAS) $(MYCCASFLAGS) -c $< -o $@
-
-src/begin.o: src/begin.S
-	$(CCAS) -fPIC -fpie -c $< -o $@
 
 clean:
 	-rm $(OBJS)
