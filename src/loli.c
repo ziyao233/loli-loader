@@ -291,7 +291,7 @@ setup_dt(void)
 }
 
 Efi_Status
-_start(Efi_Handle imageHandle, Efi_System_Table *st)
+main(Efi_Handle imageHandle, Efi_System_Table *st)
 {
 	efi_init(imageHandle, st);
 
