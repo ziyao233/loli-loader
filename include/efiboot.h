@@ -94,7 +94,7 @@ typedef struct {
 				void *sourceBuffer, uint64_t sourceSize,
 				Efi_Handle *imageHandle);
 	Efi_Status (*startImage)(Efi_Handle imageHandle,
-				 uint_native exitDataSize,
+				 uint_native *exitDataSize,
 				 wchar_t **exitdata);
 	Efi_Handle exit;
 	Efi_Status (*unloadImage)(Efi_Handle imageHandle);
