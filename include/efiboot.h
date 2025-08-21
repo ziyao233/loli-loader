@@ -50,6 +50,12 @@ typedef enum {
 	EFI_TIMER_RELATIVE,
 } Efi_Type_Delay;
 
+typedef enum {
+	Efi_Locate_All_Handles,
+	Efi_Locate_By_Register_Notify,
+	Efi_Locate_By_Protocol,
+} Efi_Locate_Search_Type;
+
 typedef struct {
 	struct Efi_Table_Header header;
 
@@ -85,7 +91,9 @@ typedef struct {
 				     void **interface);
 	Efi_Handle reserved;
 	Efi_Handle registerProtocolNotify;
-	Efi_Handle locateHandle;
+	Efi_Status (*locateHandle)(Efi_Locate_Search_Type searchType,
+				   Efi_Guid *guid, void *searchKey,
+				   uint_native *bufSize, Efi_Handle *buffer);
 	Efi_Handle locateDevicePath;
 	Efi_Status (*installConfigurationTable)(Efi_Guid *guid, void *table);
 
