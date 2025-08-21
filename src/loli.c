@@ -18,6 +18,7 @@
 #include <misc.h>
 #include <efidevicetree.h>
 #include <fdt.h>
+#include <graphics.h>
 
 #define LOLI_CFG "loli.cfg"
 
@@ -296,6 +297,8 @@ main(Efi_Handle imageHandle, Efi_System_Table *st)
 	efi_init(imageHandle, st);
 
 	printf("loli bootloader (%s built)\r\n", __DATE__);
+
+	graphics_init();
 
 	int64_t cfgSize = file_get_size(LOLI_CFG);
 	if (cfgSize < 0)

@@ -9,6 +9,10 @@
 
 #include <efidef.h>
 
+#define EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID \
+	EFI_GUID(0x9042a9de, 0x23dc, 0x4a38,				\
+		 0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a)
+
 #pragma pack(push, 0)
 
 typedef struct {
@@ -30,6 +34,49 @@ typedef struct Efi_Simple_Text_Output_Protocol {
 	Efi_Status (*outputString)(struct Efi_Simple_Text_Output_Protocol *p,
 				   wchar_t *str);
 } Efi_Simple_Text_Output_Protocol;
+
+typedef struct Efi_Pixel_Bitmask {
+	uint32_t redMask;
+	uint32_t greenMask;
+	uint32_t blueMask;
+	uint32_t reservedMask;
+} Efi_Pixel_Bitmask;
+
+typedef enum {
+	PIXEL_RGB_RESERVED_8888 = 0,
+	PIXEL_BGR_RESERVED_8888 = 1,
+	PIXEL_BIT_MASK = 2,
+	PIXEL_BIT_ONLY = 3,
+} Efi_Graphics_Pixel_Format;
+
+typedef struct Efi_Graphics_Output_Mode_Info {
+	uint32_t version;
+	uint32_t horizontalRes;
+	uint32_t verticalRes;
+	Efi_Graphics_Pixel_Format pixelFormat;
+	Efi_Pixel_Bitmask pixelInfo;
+	uint32_t pixelPerScanline;
+} Efi_Graphics_Output_Mode_Info;
+
+typedef struct Efi_Graphics_Output_Mode {
+	uint32_t maxMode;
+	uint32_t mode;
+	Efi_Graphics_Output_Mode_Info *info;
+	uint_native sizeOfInfo;
+	void *fbBase;
+	uint_native fbSize;
+} Efi_Graphics_Output_Mode;
+
+typedef struct Efi_Graphics_Output_Protocol {
+	Efi_Status (*queryMode)(struct Efi_Graphics_Output_Protocol *p,
+				uint32_t modeNum,
+				uint_native *sizeOfInfo,
+				Efi_Graphics_Output_Mode_Info **info);
+	Efi_Status (*setMode)(struct Efi_Graphics_Output_Protocol *p,
+			      uint32_t modeNum);
+	Efi_Handle blt;
+	Efi_Graphics_Output_Mode *mode;
+} Efi_Graphics_Output_Protocol;
 
 #pragma pack(pop)
 

@@ -51,8 +51,12 @@ typedef struct {
 		(c) & 0xff, ((c) >> 8) & 0xff,				\
 		(d0), (d1), (d2), (d3), (d4), (d5), (d6), (d7) } }
 
+#define EFI_ERRNO(x)			((x) & ~(1ULL << 63))
+
 #define EFI_SUCCESS			0
 #define EFI_INVALID_PARAMETER		2
+#define EFI_BUFFER_TOO_SMALL		5
 #define EFI_OUT_OF_RESOURCES		9
+#define EFI_NOT_FOUND			14
 
 #endif	// __LOLI_EFIDEF_H_INC__
