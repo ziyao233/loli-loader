@@ -13,6 +13,10 @@
 	EFI_GUID(0x9042a9de, 0x23dc, 0x4a38,				\
 		 0x96, 0xfb, 0x7a, 0xde, 0xd0, 0x80, 0x51, 0x6a)
 
+#define EFI_SERIAL_IO_PROTOCOL_GUID \
+	EFI_GUID(0xbb25cf6f,0xf1d4, 0x11d2,				\
+		 0x9a, 0x0c, 0x00, 0x90, 0x27, 0x3f, 0xc1, 0xfd)
+
 #pragma pack(push, 0)
 
 typedef struct {
@@ -77,6 +81,18 @@ typedef struct Efi_Graphics_Output_Protocol {
 	Efi_Handle blt;
 	Efi_Graphics_Output_Mode *mode;
 } Efi_Graphics_Output_Protocol;
+
+typedef struct Efi_Serial_IO_Protocol {
+	uint32_t revision;
+	Efi_Handle reset;
+	Efi_Handle setAttr;
+	Efi_Handle setCtrl;
+	Efi_Handle getCtrl;
+	Efi_Status (*write)(struct Efi_Serial_IO_Protocol *p,
+			    uint_native *bufSize, void *buf);
+	Efi_Handle read;
+	Efi_Handle serailIOMode;
+} Efi_Serial_IO_Protocol;
 
 #pragma pack(pop)
 
