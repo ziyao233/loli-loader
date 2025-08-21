@@ -16,6 +16,7 @@
 #include <interaction.h>
 #include <misc.h>
 #include <memory.h>
+#include <serial.h>
 
 void
 printf(const char *format, ...)
@@ -26,10 +27,14 @@ printf(const char *format, ...)
 	char buf[256];
 	vsprintf(buf, format, va);
 
-	wchar_t buf2[256];
-	str2wcs(buf2, buf);
+	if (!gSerialAvailable) {
+		wchar_t buf2[256];
+		str2wcs(buf2, buf);
 
-	efi_method(gST->conOut, outputString, buf2);
+		efi_method(gST->conOut, outputString, buf2);
+	} else {
+		serial_write(buf);
+	}
 
 	va_end(va);
 }
