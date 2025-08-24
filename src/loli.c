@@ -297,10 +297,12 @@ main(Efi_Handle imageHandle, Efi_System_Table *st)
 {
 	efi_init(imageHandle, st);
 
-	printf("loli bootloader (%s built)\r\n", __DATE__);
+	printf("loli bootloader is initializing\r\n");
 
 	serial_init();
 	graphics_init();
+
+	printf("loli bootloader (%s built)\r\n", __DATE__);
 
 	int64_t cfgSize = file_get_size(LOLI_CFG);
 	if (cfgSize < 0)
