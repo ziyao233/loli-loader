@@ -17,6 +17,7 @@
 #include <misc.h>
 #include <memory.h>
 #include <serial.h>
+#include <graphics.h>
 
 void
 printf(const char *format, ...)
@@ -27,14 +28,18 @@ printf(const char *format, ...)
 	char buf[256];
 	vsprintf(buf, format, va);
 
-	if (!gSerialAvailable) {
+	if (!gSerialAvailable && !gGraphicsAvailable) {
 		wchar_t buf2[256];
 		str2wcs(buf2, buf);
 
 		efi_method(gST->conOut, outputString, buf2);
-	} else {
-		serial_write(buf);
 	}
+
+	if (gSerialAvailable)
+		serial_write(buf);
+
+	if (gGraphicsAvailable)
+		graphics_write(buf);
 
 	va_end(va);
 }
