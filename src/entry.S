@@ -9,6 +9,8 @@
 _start:
 #if defined(LOLI_TARGET_RISCV64)
 	j		main
+#elif defined(LOLI_TARGET_LOONGARCH64)
+	b		main
 #elif defined(LOLI_TARGET_X86_64)
 	movq		%rcx,		%rdi
 	movq		%rdx,		%rsi

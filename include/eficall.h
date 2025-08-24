@@ -8,7 +8,7 @@
 #ifndef __LOLI_EFICALL_H_INC__
 #define __LOLI_EFICALL_H_INC__
 
-#if defined(LOLI_TARGET_RISCV64)
+#if defined(LOLI_TARGET_RISCV64) || defined(LOLI_TARGET_LOONGARCH64)
 #define efi_call(f, ...) ((f)(__VA_ARGS__))
 #elif defined(LOLI_TARGET_X86_64)
 

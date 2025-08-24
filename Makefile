@@ -12,6 +12,7 @@ PYTHON		= python
 CONFIG_$(ARCH)	= yes
 ARCHFLAGS_$(CONFIG_x86_64)	= -DLOLI_TARGET_X86_64
 ARCHFLAGS_$(CONFIG_riscv64)	= -DLOLI_TARGET_RISCV64
+ARCHFLAGS_$(CONFIG_loongarch64)	= -DLOLI_TARGET_LOONGARCH64
 
 MYCFLAGS	?= -ffreestanding -fno-stack-protector -fno-stack-check \
 		   -fPIE -fshort-wchar -static -nostdinc		\
