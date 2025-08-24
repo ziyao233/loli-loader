@@ -19,9 +19,9 @@ STUB(1):
 
 	movq		%rdi,		%rcx
 
-	addq		$-32,		%rsp
+	addq		$-40,		%rsp
 	callq		*%rsi
-	addq		$32,		%rsp
+	addq		$40,		%rsp
 
 	retq
 
@@ -31,9 +31,9 @@ STUB(2):
 	movq		%rdi,		%rcx
 	movq		%rsi,		%rdx
 
-	addq		$-32,		%rsp
+	addq		$-40,		%rsp
 	callq		*%rax
-	addq		$32,		%rsp
+	addq		$40,		%rsp
 
 	retq
 
@@ -44,9 +44,9 @@ STUB(3):
 	movq		%rdi,		%rcx
 	movq		%rsi,		%rdx
 
-	addq		$-32,		%rsp
+	addq		$-40,		%rsp
 	callq		*%rax
-	addq		$32,		%rsp
+	addq		$40,		%rsp
 
 	retq
 
@@ -58,14 +58,15 @@ STUB(4):
 	movq		%rdi,		%rcx
 	movq		%rsi,		%rdx
 
-	addq		$-32,		%rsp
+	addq		$-40,		%rsp
 	callq		*%rax
-	addq		$32,		%rsp
+	addq		$40,		%rsp
 
 	retq
 
 STUB(5):
 	movq		%r9,		%rax		// function pointer
+	addq		$-8,		%rsp
 
 	pushq		%r8
 	movq		%rdx,		%r8
@@ -75,12 +76,13 @@ STUB(5):
 
 	addq		$-32,		%rsp
 	callq		*%rax
-	addq		$40,		%rsp
+	addq		$48,		%rsp
 
 	retq
 
 STUB(6):
 	movq		8(%rsp),	%rax		// function pointer
+	addq		$-8,		%rsp
 
 	pushq		%r9
 	pushq		%r8
@@ -91,7 +93,7 @@ STUB(6):
 
 	addq		$-32,		%rsp
 	callq		*%rax
-	addq		$48,		%rsp
+	addq		$56,		%rsp
 
 	retq
 
