@@ -2,7 +2,7 @@
 /*
  *	loli-loader
  *	/src/interaction.c
- *	Copyright (c) 2024 Yao Zi.
+ *	Copyright (c) 2024-2025 Yao Zi.
  */
 
 #include <stdarg.h>
@@ -19,27 +19,45 @@
 #include <serial.h>
 #include <graphics.h>
 
+static char *gFormatBuf, *gLineEndConvertBuf;
+static wchar_t *gWideCharBuf;
+
+void
+interaction_init(void)
+{
+	gFormatBuf = malloc(sizeof(*gFormatBuf) * 1024);
+	gLineEndConvertBuf = malloc(sizeof(*gLineEndConvertBuf) * 1024);
+	gWideCharBuf = malloc(sizeof(*gWideCharBuf) * 1024);
+}
+
 void
 printf(const char *format, ...)
 {
 	va_list va;
 	va_start(va, format);
 
-	char buf[256];
-	vsprintf(buf, format, va);
+	vsprintf(gFormatBuf, format, va);
+
+	const char *src = gFormatBuf;
+	char *dst = gLineEndConvertBuf;
+	while (*src) {
+		if (*src == '\n')
+			*(dst++) = '\r';
+		*(dst++) = *(src++);
+	}
+	*dst = '\0';
 
 	if (!gSerialAvailable && !gGraphicsAvailable) {
-		wchar_t buf2[256];
-		str2wcs(buf2, buf);
+		str2wcs(gWideCharBuf, gLineEndConvertBuf);
 
-		efi_method(gST->conOut, outputString, buf2);
+		efi_method(gST->conOut, outputString, gWideCharBuf);
 	}
 
 	if (gSerialAvailable)
-		serial_write(buf);
+		serial_write(gLineEndConvertBuf);
 
 	if (gGraphicsAvailable)
-		graphics_write(buf);
+		graphics_write(gLineEndConvertBuf);
 
 	va_end(va);
 }

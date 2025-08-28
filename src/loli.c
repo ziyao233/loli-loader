@@ -297,6 +297,8 @@ main(Efi_Handle imageHandle, Efi_System_Table *st)
 {
 	efi_init(imageHandle, st);
 
+	interaction_init();
+
 	printf("loli bootloader is initializing\r\n");
 
 	serial_init();
