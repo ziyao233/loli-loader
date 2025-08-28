@@ -11,8 +11,11 @@
 #include <misc.h>
 #include <string.h>
 
-static Efi_Serial_IO_Protocol **gSerialProtocols;
-static size_t gSerialNum;
+static struct {
+	Efi_Serial_IO_Protocol **protocols;
+	size_t num;
+	char *buf;
+} gSerialStatus;
 int gSerialAvailable;
 
 void
@@ -23,11 +26,11 @@ serial_write(const char *buf)
 
 	uint_native size = strlen(buf);
 
-	for (int i = 0; i < gSerialNum; i++) {
+	for (int i = 0; i < gSerialStatus.num; i++) {
 		uint_native remain = size, written = remain;
 
 		while (remain) {
-			efi_method(gSerialProtocols[i], write, &written,
+			efi_method(gSerialStatus.protocols[i], write, &written,
 				   (void *)(buf + size - remain));
 			remain = remain - written;
 			written = remain;
@@ -53,17 +56,18 @@ serial_init(void)
 		panic("Failed to locate handle for serial");
 	}
 
-	gSerialNum = handleBufSize / sizeof(Efi_Handle);
+	gSerialStatus.num = handleBufSize / sizeof(Efi_Handle);
 
-	Efi_Handle handles[gSerialNum];
+	Efi_Handle handles[gSerialStatus.num];
 	efi_call(gBS->locateHandle, Efi_Locate_By_Protocol, &serialGuid, NULL,
 		 &handleBufSize, handles);
 
-	gSerialProtocols = malloc(sizeof(*gSerialProtocols) * gSerialNum);
+	gSerialStatus.protocols = malloc(sizeof(*gSerialStatus.protocols) *
+					 gSerialStatus.num);
 
-	for (int i = 0; i < gSerialNum; i++)
+	for (int i = 0; i < gSerialStatus.num; i++)
 		efi_handle_protocol(handles[i], serialGuid,
-				    &gSerialProtocols[i]);
+				    &gSerialStatus.protocols[i]);
 
 	gSerialAvailable = 1;
 }
