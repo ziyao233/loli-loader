@@ -138,6 +138,11 @@ graphics_init(void)
 			break;
 	}
 
+	if (mode == gop->mode->maxMode) {
+		pr_info("Skip graphics initialization: No suitable mode\n");
+		return;
+	}
+
 	ret = efi_method(gop, setMode, mode);
 	if (ret) {
 		pr_err("Failed to setup GOP mode %u: %d\n", mode, ret);
