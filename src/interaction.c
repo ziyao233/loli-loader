@@ -125,7 +125,7 @@ getline_timeout(int timeout)
 
 		s[strlen - 1] = c;
 	} while (c != '\r' && c != '\n');
-	printf("\r\n");
+	printf("\n");
 
 	s[strlen - 1] = '\0';
 	return s;

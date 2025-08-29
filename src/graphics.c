@@ -112,7 +112,7 @@ graphics_init(void)
 	ret = efi_call(gBS->locateProtocol, &gopGuid, NULL, (void **)&gop);
 	ret = EFI_ERRNO(ret);
 	if (ret == EFI_NOT_FOUND) {
-		pr_info("Skip graphics initialization: GOP isn't supported\r\n");
+		pr_info("Skip graphics initialization: GOP isn't supported\n");
 		return;
 	} else if (ret) {
 		pr_err("locateProtocol returns %lu for GOP\n", ret);
@@ -125,7 +125,7 @@ graphics_init(void)
 		uint_native size;
 		ret = efi_method(gop, queryMode, mode, &size, &info);
 		if (ret) {
-			pr_err("Failed to query GOP mode %u: %d\r\n", mode, ret);
+			pr_err("Failed to query GOP mode %u: %d\n", mode, ret);
 			return;
 		}
 
@@ -140,13 +140,12 @@ graphics_init(void)
 
 	ret = efi_method(gop, setMode, mode);
 	if (ret) {
-		pr_err("Failed to setup GOP mode %u: %d\r\n", mode, ret);
+		pr_err("Failed to setup GOP mode %u: %d\n", mode, ret);
 		return;
 	}
 
-	pr_info("Graphics initialized: GOP mode = %u\r\n", mode);
-	pr_info("Resolution %ux%u\r\n",
-		info->horizontalRes, info->verticalRes);
+	pr_info("Graphics initialized: GOP mode = %u\n", mode);
+	pr_info("Resolution %ux%u\n", info->horizontalRes, info->verticalRes);
 
 	gFBStatus = (struct gFBStatus) {
 			.base		= gop->mode->fbBase,

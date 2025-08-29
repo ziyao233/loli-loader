@@ -49,7 +49,7 @@ serial_init(void)
 		       NULL, &handleBufSize, NULL);
 	ret = EFI_ERRNO(ret);
 	if (ret == EFI_NOT_FOUND) {
-		pr_info("Skipping serial initialization: no serial supported\r\n");
+		pr_info("Skipping serial initialization: no serial supported\n");
 		return;
 	} else if (ret != EFI_BUFFER_TOO_SMALL) {
 		pr_err("locateHandle fails with %lu for serial GUID\n", ret);

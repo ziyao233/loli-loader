@@ -24,6 +24,6 @@ panic(const char *msg)
 		msg++;
 	}
 
-	printf("\r\nPANIC: can't boot\r\n");
+	printf("\nPANIC: can't boot\n");
 	while (1) ;
 }

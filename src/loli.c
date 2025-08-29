@@ -58,7 +58,7 @@ retrieve_timeout(const char *cfg)
 
 	int timeout = atou(res);
 	if (timeout < 0) {
-		pr_warn("invalid timeout \"%s\", use 0 instead\r\n", res);
+		pr_warn("invalid timeout \"%s\", use 0 instead\n", res);
 		timeout = 0;
 	}
 
@@ -75,7 +75,7 @@ wait_for_boot_entry(int timeout)
 
 	/* TODO: support "default" option */
 	if (!line) {
-		printf("\r\nBoot entry 0 by default\r\n");
+		printf("\nBoot entry 0 by default\n");
 		return 0;
 	}
 
@@ -159,36 +159,36 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 	/* Releasing of temporary objects is delayed until everything sets up */
 	char *kernel = get_pair(p, "kernel");
 	if (!kernel) {
-		pr_err("No kernel defined for the entry!\r\n");
+		pr_err("No kernel defined for the entry!\n");
 		goto out_err;
 	}
 
 	int64_t kernelSize = file_get_size(kernel);
 	if (kernelSize < 0) {
-		pr_err("Can't load kernel %s\r\n", kernel);
+		pr_err("Can't load kernel %s\n", kernel);
 		goto out_err;
 	}
 
 	void *kernelBase = malloc_pages(kernelSize);
 	int64_t ret = file_load(kernel, &kernelBase);
 	if (ret < 0) {
-		pr_err("Can't load kernel %s\r\n", kernel);
+		pr_err("Can't load kernel %s\n", kernel);
 		goto free_kernel;
 	}
 
 	if (load_efi_image(entry, kernelBase, kernelSize)) {
-		pr_err("Can't load kernel %s\r\n", kernel);
+		pr_err("Can't load kernel %s\n", kernel);
 		goto free_kernel_base;
 	}
 
-	pr_info("Kernel %s, size = %lu\r\n", kernel, kernelSize);
+	pr_info("Kernel %s, size = %lu\n", kernel, kernelSize);
 
 	char *initrd = get_pair(p, "initrd");
 	if (initrd) {
 #define MiB	1024 * 1024
 		int64_t initrdSize = file_get_size(initrd);
 		if (initrdSize < 0) {
-			pr_err("Can't load initrd %s\r\n", initrd);
+			pr_err("Can't load initrd %s\n", initrd);
 			goto unload_image;
 		}
 
@@ -201,19 +201,19 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 		initrdBase = (char *)initrdBase + 2 * MiB;
 		initrdSize = file_load(initrd, &initrdBase);
 		if (initrdSize < 0) {
-			pr_err("Can't load initrd %s\r\n", initrd);
+			pr_err("Can't load initrd %s\n", initrd);
 			goto unload_image;
 		}
 
-		pr_info("Initrd %s, size = %lu\r\n", initrd, initrdSize);
+		pr_info("Initrd %s, size = %lu\n", initrd, initrdSize);
 
 		setup_initrd(initrdBase, initrdSize);
 	} else {
-		pr_info("Initrd: (none)\r\n");
+		pr_info("Initrd: (none)\n");
 	}
 
 	char *append = get_pair(p, "append");
-	pr_info("Append: %s\r\n", append ? append : "(none)");
+	pr_info("Append: %s\n", append ? append : "(none)");
 
 	setup_append(entry->kernelHandle, append);
 
@@ -261,11 +261,11 @@ setup_dt(void)
 	Fdt_Header *fdt = search_for_devicetree(&fdtSize);
 
 	if (!fdt) {
-		pr_info("DeviceTree: not found\r\n");
+		pr_info("DeviceTree: not found\n");
 		return;
 	}
 
-	pr_info("devicetree: found, size %lu\r\n", fdtSize);
+	pr_info("devicetree: found, size %lu\n", fdtSize);
 
 	/* TODO: don't use a hard size limit */
 	size_t copySize = fdtSize + 4096;
@@ -278,16 +278,16 @@ setup_dt(void)
 	if (!dtp) {
 		free(copy);
 		pr_info("EFI_DT_FIXUP_PROTOCOL isn't supported, "
-			"apply no fixup\r\n");
+			"apply no fixup\n");
 		return;
 	}
 
 	ret = efi_method(dtp, fixup, copy, &copySize,
 					 EFI_DT_APPLY_FIXES | EFI_DT_RESERVE_MEMORY);
 	if (ret == EFI_SUCCESS)
-		pr_info("devicetree: applied fixes\r\n");
+		pr_info("devicetree: applied fixes\n");
 	else
-		pr_info("devicetree: failed to apply fixes\r\n");
+		pr_info("devicetree: failed to apply fixes\n");
 
 	efi_install_configuration_table(EFI_DTB_TABLE_GUID, copy);
 }
@@ -299,12 +299,12 @@ main(Efi_Handle imageHandle, Efi_System_Table *st)
 
 	interaction_init();
 
-	printf("loli bootloader is initializing\r\n");
+	printf("loli bootloader is initializing\n");
 
 	serial_init();
 	graphics_init();
 
-	printf("loli bootloader (%s built)\r\n", __DATE__);
+	printf("loli bootloader (%s built)\n", __DATE__);
 
 	int64_t cfgSize = file_get_size(LOLI_CFG);
 	if (cfgSize < 0)
@@ -326,7 +326,7 @@ main(Efi_Handle imageHandle, Efi_System_Table *st)
 
 		printf("%d: ", entryNum);
 		printn(name, namelen);
-		printf("\r\n");
+		printf("\n");
 
 		entryNum++;
 	}
@@ -344,14 +344,14 @@ main(Efi_Handle imageHandle, Efi_System_Table *st)
 			if (!load_and_validate_entry(entry, &bootEntry))
 				break;
 			else
-				pr_err("Invalid entry\r\n");
+				pr_err("Invalid entry\n");
 		}
 	}
 
 	setup_dt();
 
 	int ret = efi_call(gBS->startImage, bootEntry.kernelHandle, NULL, NULL);
-	pr_err("Failed to start image: %d\r\n", ret);
+	pr_err("Failed to start image: %d\n", ret);
 	panic("Cannot boot selected entry");
 
 	return ret;
