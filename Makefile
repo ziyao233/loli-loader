@@ -1,12 +1,12 @@
 #	SPDX-License-Identifier: MPL-2.0
 #	loli-loader
 #	/Makefile
-#	Copyright (c) 2024 Yao Zi.
+#	Copyright (c) 2024-2025 Yao Zi.
 
 ARCH		= $(shell uname -m)
-CC		= clang
-CCAS		= clang
-CCLD		= clang
+CC		= cc
+CCAS		= cc
+CCLD		= cc
 PYTHON		= python
 
 CONFIG_$(ARCH)	= yes
@@ -15,7 +15,8 @@ ARCHFLAGS_$(CONFIG_riscv64)	= -DLOLI_TARGET_RISCV64
 ARCHFLAGS_$(CONFIG_loongarch64)	= -DLOLI_TARGET_LOONGARCH64
 
 MYCFLAGS	?= -ffreestanding -fno-stack-protector -fno-stack-check \
-		   -fPIE -fshort-wchar -static -nostdinc		\
+		   -fPIE -fshort-wchar -static -nostdinc -std=c99	\
+		   -Wall						\
 		   $(ARCHFLAGS_yes) $(CFLAGS)
 
 MYCCASFLAGS	?= $(MYCFLAGS) $(CCASFLAGS)
