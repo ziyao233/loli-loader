@@ -1,12 +1,10 @@
 # The loli Bootloader
 
-A bootloader meant to be small and useful for experienced users.
+A bootloader meant to be small and useful for experienced users. Just like
+systemd-boot, most functionaility is implemented through UEFI API.
 
-Just like systemd-boot, most functionaility is implemented through UEFI API,
-instead of implementing its own in the bootloader.
-
-Currently WIP. Please wait for future releases, unless you're experienced to
-UEFI and Linux bootflow.
+***Currently WIP. Please wait for future releases, unless you're experienced
+with UEFI and Linux bootflow.***
 
 ## Limitation
 
@@ -18,10 +16,9 @@ UEFI and Linux bootflow.
   firwmare to correctly fix up devicetrees, since we don't carry a libfdt.
 - initrd is passed through `LINUX_EFI_INITRD_MEDIA_GUID` configuration table,
   which is only supported by Linux 6.1 or later.
-- No support for graphics or keyboard for now, this is a WIP task.
 - Building involves a Python script taken from systemd-boot, there's a plan to
   rewrite it in Lua or C.
-- Extlinux-style configuration. I don't want to implement one more format.
+- Extlinux-style configuration. I don't want to create one more new format.
 
 ![xkcd 927: standards](https://imgs.xkcd.com/comics/standards.png)
 
@@ -29,6 +26,7 @@ UEFI and Linux bootflow.
 
 - x86_64 (amd64): ACPI
 - riscv64: devicetree and ACPI
+- loongarch64: devicetree (untested) and ACPI
 
 ## Configuration File
 
@@ -60,11 +58,17 @@ label Linux Boot Test Quiet
 - `initrd`: Optional
 - `append`: Optional
 
-### Treament to malformed entries
+### Treatment to malformed entries
 
 As long as the entry cannot be understood by loli, it's automatically skipped.
 
 ## How to Build
+
+You need to install
+
+- GCC or Clang
+- Python 3
+- Python package pyelftools
 
 Simply run `make` in the top directory, which should soon complete with
 `loli.efi` produced.
@@ -82,6 +86,7 @@ Simply run `make` in the top directory, which should soon complete with
   automatically detected with `uname -m`. Possible values:
   - `x86_64`
   - `riscv64`
+  - `loongarch64`
 - `CC`: Target compiler.
 - `CCAS`: Target assembler.
 - `CCLD`: Target linker.
