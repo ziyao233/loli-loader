@@ -27,6 +27,7 @@ with UEFI and Linux bootflow.***
 - x86_64 (amd64): ACPI
 - riscv64: devicetree and ACPI
 - loongarch64: devicetree (untested) and ACPI
+- aarch64: devicetree and ACPI
 
 ## Configuration File
 
@@ -87,6 +88,7 @@ Simply run `make` in the top directory, which should soon complete with
   - `x86_64`
   - `riscv64`
   - `loongarch64`
+  - `aarch64`
 - `CC`: Target compiler.
 - `CCAS`: Target assembler.
 - `CCLD`: Target linker.

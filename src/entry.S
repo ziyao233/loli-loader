@@ -15,4 +15,6 @@ _start:
 	movq		%rcx,		%rdi
 	movq		%rdx,		%rsi
 	jmp		main
+#elif defined(LOLI_TARGET_AARCH64)
+	b		main
 #endif
