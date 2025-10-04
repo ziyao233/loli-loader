@@ -26,7 +26,7 @@ MYLDFLAGS	= $(LDFLAGS)
 OBJS		= src/loli.o src/efi.o src/string.o src/interaction.o
 OBJS		+= src/memory.o src/file.o src/misc.o src/extlinux.o
 OBJS		+= src/eficall.o src/entry.o src/graphics.o src/serial.o
-OBJS		+= src/font.o
+OBJS		+= src/font.o src/ctype.o
 
 default: loli.efi
 

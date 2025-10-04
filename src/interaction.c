@@ -5,6 +5,7 @@
  *	Copyright (c) 2024-2025 Yao Zi.
  */
 
+#include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
 
@@ -62,6 +63,29 @@ printf(const char *format, ...)
 	va_end(va);
 }
 
+static int
+getchar_translate(Efi_Input_Key *key)
+{
+	if (key->unicodeChar)
+		return key->unicodeChar;
+
+	switch (key->scanCode) {
+	case 0x8:
+		/*
+		 * EFI scan code for DEL. When x86_64 QEMU is running with
+		 * -nographics and the vendored EDK2 firmware, a Backspace may
+		 * be translated to
+		 * (Efi_Input_Key) { .unicodeChar = 0, scanCode = 0x8 }, i.e.
+		 *
+		 * It's still under investigation whether it's a bug or not,
+		 * but it won't hurt to workaround it for now.
+		 */
+		return '\b';
+	}
+
+	return 0;
+}
+
 int
 getchar_timeout(int timeout)
 {
@@ -95,7 +119,7 @@ getchar_timeout(int timeout)
 	if (efi_method(gST->conIn, readKeyStroke, &key) != EFI_SUCCESS)
 		panic("Can't read inputs");
 
-	return key.unicodeChar;
+	return getchar_translate(&key);
 }
 
 char *
@@ -112,21 +136,27 @@ getline_timeout(int timeout)
 		if (c == EOF)
 			return NULL;
 
-		if (!c)
+		if (c == L'\b' && strlen) {
+			printf("\b \b");
+
+			s[strlen - 1] = '\0';
+			strlen--;
+		} else if (!isprint(c)) {
 			continue;
+		} else {
+			printf("%c", c);
 
-		printf("%c", c);
+			strlen++;
+			if (strlen == buflen) {
+				buflen += 32;
+				s = realloc(s, strlen, buflen);
+			}
 
-		strlen++;
-		if (strlen == buflen) {
-			buflen += 32;
-			s = realloc(s, strlen, buflen);
+			s[strlen - 1] = c;
 		}
-
-		s[strlen - 1] = c;
 	} while (c != '\r' && c != '\n');
 	printf("\n");
 
-	s[strlen - 1] = '\0';
+	s[strlen] = '\0';
 	return s;
 }
