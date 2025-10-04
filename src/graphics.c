@@ -64,6 +64,14 @@ draw_char(char c)
 		case '\n':
 			scroll_up();
 			return;
+		case '\b':
+			if (!cursorX)
+				return;
+
+			cursorX--;
+
+			/* Assume the glyph for '\b' is empty */
+			break;
 	}
 
 	if (cursorX == CONSOLE_WIDTH) {
@@ -83,7 +91,8 @@ draw_char(char c)
 		p += gFBStatus.scanlineWidth;
 	}
 
-	cursorX++;
+	if (c != '\b')
+		cursorX++;
 }
 
 void
