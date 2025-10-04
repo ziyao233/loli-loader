@@ -15,10 +15,16 @@ ARCHFLAGS_$(CONFIG_aarch64)	= -DLOLI_TARGET_AARCH64
 ARCHFLAGS_$(CONFIG_riscv64)	= -DLOLI_TARGET_RISCV64
 ARCHFLAGS_$(CONFIG_loongarch64)	= -DLOLI_TARGET_LOONGARCH64
 
+ifeq ($(DEBUG),)
+DEBUG_FLAGS	:= -O2
+else
+DEBUG_FLAGS	:= -O0 -g
+endif
+
 MYCFLAGS	?= -ffreestanding -fno-stack-protector -fno-stack-check \
 		   -fPIE -fshort-wchar -static -nostdinc -std=c99	\
 		   -Wall						\
-		   $(ARCHFLAGS_yes) $(CFLAGS)
+		   $(DEBUG_FLAGS) $(ARCHFLAGS_yes) $(CFLAGS)
 
 MYCCASFLAGS	?= $(MYCFLAGS) $(CCASFLAGS)
 MYLDFLAGS	= $(LDFLAGS)
