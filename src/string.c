@@ -209,6 +209,12 @@ memcpy(void *dst, void *src, size_t n)
 }
 
 void *
+memmove(void *dst, void *src, size_t n)
+{
+	return memcpy(dst, src, n);
+}
+
+void *
 memset(void *mem, int c, size_t n)
 {
 	char *p = mem;
