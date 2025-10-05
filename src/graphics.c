@@ -16,6 +16,8 @@ static struct gFBStatus {
 	uint32_t scanlineWidth;
 	uint32_t pixelMask;
 	volatile uint32_t *base;
+	void (*drawPixel)(uint32_t x, uint32_t y, int fiil);
+	void (*scrollUp)(void);
 } gFBStatus;
 
 int gGraphicsAvailable;
@@ -49,6 +51,17 @@ scroll_up(void)
 		*(p1++) = 0;
 }
 
+static void
+draw_pixel(uint32_t x, uint32_t y, int fill)
+{
+	volatile uint32_t *p = gFBStatus.base;
+
+	p += y * gFBStatus.scanlineWidth;
+	p += x;
+
+	*p = fill ? gFBStatus.pixelMask : 0;
+}
+
 extern uint8_t gFont[];
 
 static void
@@ -62,7 +75,7 @@ draw_char(char c)
 			cursorX = 0;
 			return;
 		case '\n':
-			scroll_up();
+			gFBStatus.scrollUp();
 			return;
 		case '\b':
 			if (!cursorX)
@@ -76,20 +89,15 @@ draw_char(char c)
 
 	if (cursorX == CONSOLE_WIDTH) {
 		cursorX = 0;
-		scroll_up();
+		gFBStatus.scrollUp();
 	}
 
-	volatile uint32_t *p = gFBStatus.base +
-			       console_line_bytes() / 4 * (CONSOLE_HEIGHT - 1);
-	p += cursorX * GLYPH_WIDTH;
-	for (uint32_t y = 0; y < GLYPH_HEIGHT; y++) {
-		for (uint32_t x = 0; x < GLYPH_WIDTH; x++) {
-			p[x] = (glyph[y] & (1 << (7 - x))) ?
-					gFBStatus.pixelMask : 0;
-		}
-
-		p += gFBStatus.scanlineWidth;
-	}
+	uint32_t startY = GLYPH_HEIGHT * (CONSOLE_HEIGHT - 1);
+	uint32_t startX = GLYPH_WIDTH * cursorX;
+	for (uint32_t y = 0; y < GLYPH_HEIGHT; y++)
+		for (uint32_t x = 0; x < GLYPH_WIDTH; x++)
+			gFBStatus.drawPixel(x + startX, y + startY,
+					    glyph[y] & (1 << (7 - x)));
 
 	if (c != '\b')
 		cursorX++;
@@ -166,6 +174,8 @@ graphics_init(void)
 			.pixelMask	= 0x00ffffff,
 			.height		= gop->mode->info->verticalRes,
 			.scanlineWidth	= gop->mode->info->pixelPerScanline,
+			.drawPixel	= draw_pixel,
+			.scrollUp	= scroll_up,
 		    };
 
 	volatile uint32_t *p = gFBStatus.base;
