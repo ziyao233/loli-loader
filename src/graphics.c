@@ -9,6 +9,7 @@
 #include <efiboot.h>
 #include <eficon.h>
 #include <string.h>
+#include <memory.h>
 #include <misc.h>
 
 static struct gFBStatus {
@@ -16,6 +17,7 @@ static struct gFBStatus {
 	uint32_t scanlineWidth;
 	uint32_t pixelMask;
 	volatile uint32_t *base;
+	uint32_t *buf;
 	void (*drawPixel)(uint32_t x, uint32_t y, int fiil);
 	void (*scrollUp)(void);
 } gFBStatus;
@@ -40,26 +42,27 @@ static void
 scroll_up(void)
 {
 	volatile uint32_t *p1 = gFBStatus.base;
-	volatile uint32_t *p2 = gFBStatus.base + console_line_bytes() / 4;
+	volatile uint32_t *p2 = gFBStatus.buf + console_line_bytes() / 4;
+	uint32_t movePixels = console_line_bytes() * (CONSOLE_HEIGHT - 1) / 4;
 
-	for (size_t i = 0;
-	     i < console_line_bytes() * (CONSOLE_HEIGHT - 1) / 4;
-	     i++)
+	for (size_t i = 0; i < movePixels; i++)
 		*(p1++) = *(p2++);
 
 	for (size_t i = 0; i < console_line_bytes() / 4; i++)
 		*(p1++) = 0;
+
+	memmove(gFBStatus.buf, gFBStatus.buf + console_line_bytes() / 4,
+		movePixels * 4);
+	memset(gFBStatus.buf + movePixels, 0, console_line_bytes());
 }
 
 static void
 draw_pixel(uint32_t x, uint32_t y, int fill)
 {
-	volatile uint32_t *p = gFBStatus.base;
+	uint32_t offset = y * gFBStatus.scanlineWidth + x;
+	uint32_t data = fill ? gFBStatus.pixelMask : 0;
 
-	p += y * gFBStatus.scanlineWidth;
-	p += x;
-
-	*p = fill ? gFBStatus.pixelMask : 0;
+	gFBStatus.base[offset] = gFBStatus.buf[offset] = data;
 }
 
 extern uint8_t gFont[];
@@ -166,6 +169,12 @@ graphics_init(void)
 		return;
 	}
 
+	uint32_t *buf = malloc_pages(gop->mode->fbSize * 4);
+	if (!buf) {
+		pr_err("Failed to allocate framebuffer for GOP\n");
+		return;
+	}
+
 	pr_info("Graphics initialized: GOP mode = %u\n", mode);
 	pr_info("Resolution %ux%u\n", info->horizontalRes, info->verticalRes);
 
@@ -173,14 +182,16 @@ graphics_init(void)
 			.base		= gop->mode->fbBase,
 			.pixelMask	= 0x00ffffff,
 			.height		= gop->mode->info->verticalRes,
+			.buf		= buf,
 			.scanlineWidth	= gop->mode->info->pixelPerScanline,
 			.drawPixel	= draw_pixel,
 			.scrollUp	= scroll_up,
 		    };
 
-	volatile uint32_t *p = gFBStatus.base;
-	for (size_t i = 0; i < gop->mode->fbSize; i++)
-		*p = 0;
+	for (size_t i = 0; i < gop->mode->fbSize; i++) {
+		gFBStatus.base[i]	= 0;
+		gFBStatus.buf[i]	= 0;
+	}
 
 	gGraphicsAvailable = 1;
 }
