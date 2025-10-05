@@ -10,10 +10,25 @@ CCLD		= cc
 PYTHON		= python
 
 CONFIG_$(ARCH)	= yes
-ARCHFLAGS_$(CONFIG_x86_64)	= -DLOLI_TARGET_X86_64
-ARCHFLAGS_$(CONFIG_aarch64)	= -DLOLI_TARGET_AARCH64
+
+ARCHFLAGS_$(CONFIG_x86_64)	= -DLOLI_TARGET_X86_64 -mgeneral-regs-only
+
+# For AArch64, UEFI Specification 2.10 states
+#	Floating point and SIMD instructions may be used.
+# But it's not sure whether it's widely followed among firmware. Let's try not
+# to be the trouble maker.
+ARCHFLAGS_$(CONFIG_aarch64)	= -DLOLI_TARGET_AARCH64 -mgeneral-regs-only
+
+# Notice for riscv64: UEFI requires extensions are checked before usage, so
+# it's important not to pass a -march argument with baseline higher than your
+# distribution's requirement.
 ARCHFLAGS_$(CONFIG_riscv64)	= -DLOLI_TARGET_RISCV64
-ARCHFLAGS_$(CONFIG_loongarch64)	= -DLOLI_TARGET_LOONGARCH64
+
+# For LoongArch, UEFI Specification (again 2.10) states
+#	FP unit can be used(CSR.EUEN.FPE to enable), calling convention refer
+#	to 2.3.8.2.
+# But it's unclear whether SIMD instructions (LSX, LASX) are allowed.
+ARCHFLAGS_$(CONFIG_loongarch64)	= -DLOLI_TARGET_LOONGARCH64 -mno-lsx -mno-lasx
 
 ifeq ($(DEBUG),)
 DEBUG_FLAGS	:= -O2
