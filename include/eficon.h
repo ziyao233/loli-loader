@@ -71,6 +71,13 @@ typedef struct Efi_Graphics_Output_Mode {
 	uint_native fbSize;
 } Efi_Graphics_Output_Mode;
 
+typedef enum {
+	EFI_BLT_VIDEO_FILL		= 0,
+	EFI_BLT_VIDEO_TO_BLT_BUFFER	= 1,
+	EFI_BLT_BUFFER_TO_VIDEO		= 2,
+	EFI_BLT_VIDEO_TO_VIDEO		= 3,
+} Efi_Graphics_Output_Blt_Op;
+
 typedef struct Efi_Graphics_Output_Protocol {
 	Efi_Status (*queryMode)(struct Efi_Graphics_Output_Protocol *p,
 				uint32_t modeNum,
@@ -78,7 +85,12 @@ typedef struct Efi_Graphics_Output_Protocol {
 				Efi_Graphics_Output_Mode_Info **info);
 	Efi_Status (*setMode)(struct Efi_Graphics_Output_Protocol *p,
 			      uint32_t modeNum);
-	Efi_Handle blt;
+	Efi_Status (*blt)(struct Efi_Graphics_Output_Protocol *p,
+			  void *bltBuffer, Efi_Graphics_Output_Blt_Op op,
+			  uint_native srcX, uint_native srcY,
+			  uint_native dstX, uint_native dstY,
+			  uint_native width, uint_native height,
+			  uint_native delta);
 	Efi_Graphics_Output_Mode *mode;
 } Efi_Graphics_Output_Protocol;
 

@@ -13,15 +13,12 @@
 #include <misc.h>
 
 typedef struct Frame_Buffer {
-	uint32_t height;
-	uint32_t scanlineWidth;
-	uint32_t pixelMask;
-	uint32_t bpp;
-	volatile void *base;
+	Efi_Graphics_Output_Protocol *gop;
+	uint32_t height, width;
 	void *buf;
+	int32_t damagedLeft, damagedUp;
+	int32_t damagedRight, damagedDown;
 	uint32_t cursorX;
-	void (*drawPixel)(struct Frame_Buffer *fb, uint32_t x, uint32_t y,
-			  int fiil);
 } Frame_Buffer;
 static Frame_Buffer *gFBs;
 static size_t gFBNum;
@@ -39,66 +36,42 @@ int gGraphicsAvailable;
 static size_t
 console_line_bytes(Frame_Buffer *fb)
 {
-	return GLYPH_HEIGHT * fb->scanlineWidth * fb->bpp / 8;
-}
-
-static void
-fb_memset(volatile void *dst, int c, size_t n)
-{
-	volatile uint8_t *p = dst;
-
-	while (n--)
-		*(p++) = c;
-}
-
-static void
-fb_memcpy(volatile void *dst, void *src, size_t n)
-{
-	volatile uint8_t *pDst = dst, *pSrc = src;
-
-	while (n--)
-		*(pDst++) = *(pSrc++);
+	return GLYPH_HEIGHT * fb->width * 4;
 }
 
 static void
 scroll_up(Frame_Buffer *fb)
 {
 	size_t moveSize = console_line_bytes(fb) * (CONSOLE_HEIGHT - 1);
-	volatile uint8_t *base = fb->base;
 	uint8_t *buf = fb->buf;
-
-	fb_memcpy(base, buf + console_line_bytes(fb), moveSize);
-	fb_memset(base + moveSize, 0, console_line_bytes(fb));
 
 	memmove(buf, buf + console_line_bytes(fb), moveSize);
 	memset(buf + moveSize, 0, console_line_bytes(fb));
+
+	fb->damagedLeft = fb->damagedUp = 0;
+	fb->damagedRight	= fb->width - 1;
+	fb->damagedDown		= fb->height - 1;
 }
 
 static void
-draw_pixel_32b(Frame_Buffer *fb, uint32_t x, uint32_t y, int fill)
+draw_pixel(Frame_Buffer *fb, uint32_t x, uint32_t y, int fill)
 {
-	volatile uint32_t *base = fb->base;
+	uint32_t offset = y * fb->width + x;
 	uint32_t *buf = fb->buf;
 
-	uint32_t offset = y * fb->scanlineWidth + x;
-	uint32_t data = fill ? fb->pixelMask : 0;
-
-	base[offset] = buf[offset] = data;
+	buf[offset] = fill ? 0x00ffffff : 0;
 }
 
 static void
-draw_pixel_anymask(Frame_Buffer *fb, uint32_t x, uint32_t y, int fill)
+update_damaged_region(Frame_Buffer *fb, uint32_t x, uint32_t y,
+		      uint32_t width, uint32_t height)
 {
-	volatile uint8_t *base = fb->base;
-	uint8_t *buf = fb->buf;
+	uint32_t endX = x + width - 1, endY = y + height - 1;
 
-	uint32_t offset = y * fb->scanlineWidth + x;
-	offset *= fb->bpp / 8;
-	uint32_t data = fill ? fb->pixelMask : 0;
-
-	uint32_t size = fb->bpp / 8;
-	fb_memcpy(base + offset, &data, size);
-	memcpy(buf + offset, &data, size);
+	fb->damagedLeft	 = fb->damagedLeft > x ? x : fb->damagedLeft;
+	fb->damagedUp	 = fb->damagedUp > y ? y : fb->damagedUp;
+	fb->damagedRight = fb->damagedRight < endX ? endX : fb->damagedRight;
+	fb->damagedDown	 = fb->damagedDown < endY ? endY : fb->damagedDown;
 }
 
 extern uint8_t gFont[];
@@ -134,11 +107,41 @@ draw_char(Frame_Buffer *fb, char c)
 	uint32_t startX = GLYPH_WIDTH * fb->cursorX;
 	for (uint32_t y = 0; y < GLYPH_HEIGHT; y++)
 		for (uint32_t x = 0; x < GLYPH_WIDTH; x++)
-			fb->drawPixel(fb, x + startX, y + startY,
-				      glyph[y] & (1 << (7 - x)));
+			draw_pixel(fb, x + startX, y + startY,
+				   glyph[y] & (1 << (7 - x)));
+
+	update_damaged_region(fb, startX, startY, GLYPH_WIDTH, GLYPH_HEIGHT);
 
 	if (c != '\b')
 		fb->cursorX++;
+}
+
+static void
+reset_damaged_region(Frame_Buffer *fb)
+{
+	fb->damagedLeft		= fb->width;
+	fb->damagedUp		= fb->height;
+	fb->damagedRight	= 0;
+	fb->damagedDown		= 0;
+}
+
+static void
+blit_buffer(Frame_Buffer *fb)
+{
+	/* Nothing damaged */
+	if (fb->damagedLeft >= fb->width)
+		return;
+
+	uint32_t damagedWidth	= fb->damagedRight - fb->damagedLeft + 1;
+	uint32_t damagedHeight	= fb->damagedDown - fb->damagedUp + 1;
+
+	efi_method(fb->gop, blt, fb->buf, EFI_BLT_BUFFER_TO_VIDEO,
+		   fb->damagedLeft, fb->damagedUp,
+		   fb->damagedLeft, fb->damagedUp,
+		   damagedWidth, damagedHeight,
+		   4 * fb->width);
+
+	reset_damaged_region(fb);
 }
 
 void
@@ -154,61 +157,23 @@ graphics_write(const char *buf)
 
 		buf++;
 	}
-}
 
-static uint32_t
-compose_pixel_bitmask(Efi_Pixel_Bitmask *pm, int reserved)
-{
-	uint32_t mask = 0;
-
-	mask |= pm->redMask;
-	mask |= pm->greenMask;
-	mask |= pm->blueMask;
-	mask |= reserved ? pm->reservedMask : 0;
-
-	return mask;
-}
-
-static int
-mask_to_bpp(uint32_t mask)
-{
-	int i = 32;
-
-	while (!(mask & (1 << 31))) {
-		mask <<= 1;
-		i--;
-	}
-
-	return i;
+	for (int i = 0; i < gFBNum; i++)
+		blit_buffer(&gFBs[i]);
 }
 
 static int
 fbmode_is_supported(Efi_Graphics_Output_Mode_Info *info)
 {
-	if (info->horizontalRes < MIN_HORIZONTAL_RESOLUTION ||
-	    info->verticalRes < MIN_VERTICAL_RESOLUTION)
-		return 0;
-
-	uint32_t mask;
-	switch (info->pixelFormat) {
-	case PIXEL_RGB_RESERVED_8888:
-	case PIXEL_BGR_RESERVED_8888:
-		return 1;
-	case PIXEL_BIT_MASK:
-		mask = compose_pixel_bitmask(&info->pixelInfo, 1);
-		return mask_to_bpp(mask) % 8 == 0;
-	default:
-		break;
-	};
-
-	return 0;
+	return info->horizontalRes >= MIN_HORIZONTAL_RESOLUTION &&
+	       info->verticalRes >= MIN_VERTICAL_RESOLUTION;
 }
 
 static int
 is_buffer_duplicated(Efi_Graphics_Output_Protocol *gop)
 {
 	for (size_t i = 0; i < gFBNum; i++) {
-		if (gop->mode->fbBase == gFBs[i].base)
+		if (gop == gFBs[i].gop)
 			return 1;
 	}
 
@@ -233,7 +198,7 @@ gop_determine_mode(Efi_Graphics_Output_Protocol *gop,
 		ret = efi_method(gop, setMode, mode);
 		if (ret) {
 			pr_err("Failed to set GOP to mode %u: %d\n", mode, ret);
-			return -1;
+			continue;
 		}
 
 		return is_buffer_duplicated(gop);
@@ -246,40 +211,30 @@ static int
 gop_setup_mode(Frame_Buffer *fb, Efi_Graphics_Output_Protocol *gop,
 	       Efi_Graphics_Output_Mode_Info *info)
 {
-	void *buf = malloc_pages(gop->mode->fbSize);
+	size_t fbSize = MIN_HORIZONTAL_RESOLUTION * MIN_VERTICAL_RESOLUTION;
+	fbSize *= 4;
+
+	void *buf = malloc_pages(fbSize);
 	if (!buf) {
 		pr_err("Failed to allocate framebuffer for GOP\n");
 		return -1;
 	}
 
 	*fb = (struct Frame_Buffer) {
-			.height		= gop->mode->info->verticalRes,
-			.scanlineWidth	= gop->mode->info->pixelPerScanline,
-			.base		= gop->mode->fbBase,
+			.gop		= gop,
+			.width		= MIN_HORIZONTAL_RESOLUTION,
+			.height		= MIN_VERTICAL_RESOLUTION,
 			.buf		= buf,
 			.cursorX	= 0,
 	};
 
-	switch (info->pixelFormat) {
-	case PIXEL_RGB_RESERVED_8888:
-	case PIXEL_BGR_RESERVED_8888:
-		fb->pixelMask = 0x00ffffff;
-		fb->bpp = 32;
-		fb->drawPixel = draw_pixel_32b;
-		break;
-	case PIXEL_BIT_MASK: {
-		fb->pixelMask = compose_pixel_bitmask(&info->pixelInfo, 0);
-		fb->bpp = mask_to_bpp(
-				compose_pixel_bitmask(&info->pixelInfo, 0));
-		fb->drawPixel = draw_pixel_anymask;
-		break;
-	}
-	default:	/* unreachable case */
-		break;
-	}
+	reset_damaged_region(fb);
 
-	fb_memset(fb->base, 0, gop->mode->fbSize);
-	memset(fb->buf, 0, gop->mode->fbSize);
+	memset(fb->buf, 0, fbSize);
+
+	uint32_t pixel = 0;
+	efi_method(gop, blt, &pixel, EFI_BLT_VIDEO_FILL, 0, 0, 0, 0,
+		   info->horizontalRes, info->verticalRes, 0);
 
 	return 0;
 }
