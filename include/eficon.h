@@ -50,7 +50,7 @@ typedef enum {
 	PIXEL_RGB_RESERVED_8888 = 0,
 	PIXEL_BGR_RESERVED_8888 = 1,
 	PIXEL_BIT_MASK = 2,
-	PIXEL_BIT_ONLY = 3,
+	PIXEL_BLT_ONLY = 3,
 } Efi_Graphics_Pixel_Format;
 
 typedef struct Efi_Graphics_Output_Mode_Info {
