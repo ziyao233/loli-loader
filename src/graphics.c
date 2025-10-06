@@ -12,14 +12,18 @@
 #include <memory.h>
 #include <misc.h>
 
-static struct gFBStatus {
+typedef struct Frame_Buffer {
 	uint32_t height;
 	uint32_t scanlineWidth;
 	uint32_t pixelMask;
 	volatile void *base;
 	void *buf;
-	void (*drawPixel)(uint32_t x, uint32_t y, int fiil);
-} gFBStatus;
+	uint32_t cursorX;
+	void (*drawPixel)(struct Frame_Buffer *fb, uint32_t x, uint32_t y,
+			  int fiil);
+} Frame_Buffer;
+static Frame_Buffer *gFBs;
+static size_t gFBNum;
 
 int gGraphicsAvailable;
 
@@ -32,9 +36,9 @@ int gGraphicsAvailable;
 #define MIN_VERTICAL_RESOLUTION		(CONSOLE_HEIGHT * 16)
 
 static size_t
-console_line_bytes(void)
+console_line_bytes(Frame_Buffer *fb)
 {
-	return GLYPH_HEIGHT * gFBStatus.scanlineWidth * 4;
+	return GLYPH_HEIGHT * fb->scanlineWidth * 4;
 }
 
 static void
@@ -56,27 +60,27 @@ fb_memcpy(volatile void *dst, void *src, size_t n)
 }
 
 static void
-scroll_up(void)
+scroll_up(Frame_Buffer *fb)
 {
-	size_t moveSize = console_line_bytes() * (CONSOLE_HEIGHT - 1);
-	volatile uint8_t *base = gFBStatus.base;
-	uint8_t *buf = gFBStatus.buf;
+	size_t moveSize = console_line_bytes(fb) * (CONSOLE_HEIGHT - 1);
+	volatile uint8_t *base = fb->base;
+	uint8_t *buf = fb->buf;
 
-	fb_memcpy(base, buf + console_line_bytes(), moveSize);
-	fb_memset(base + moveSize, 0, console_line_bytes());
+	fb_memcpy(base, buf + console_line_bytes(fb), moveSize);
+	fb_memset(base + moveSize, 0, console_line_bytes(fb));
 
-	memmove(buf, buf + console_line_bytes(), moveSize);
-	memset(buf + moveSize, 0, console_line_bytes());
+	memmove(buf, buf + console_line_bytes(fb), moveSize);
+	memset(buf + moveSize, 0, console_line_bytes(fb));
 }
 
 static void
-draw_pixel(uint32_t x, uint32_t y, int fill)
+draw_pixel(Frame_Buffer *fb, uint32_t x, uint32_t y, int fill)
 {
-	volatile uint32_t *base = gFBStatus.base;
-	uint32_t *buf = gFBStatus.buf;
+	volatile uint32_t *base = fb->base;
+	uint32_t *buf = fb->buf;
 
-	uint32_t offset = y * gFBStatus.scanlineWidth + x;
-	uint32_t data = fill ? gFBStatus.pixelMask : 0;
+	uint32_t offset = y * fb->scanlineWidth + x;
+	uint32_t data = fill ? fb->pixelMask : 0;
 
 	base[offset] = buf[offset] = data;
 }
@@ -84,42 +88,41 @@ draw_pixel(uint32_t x, uint32_t y, int fill)
 extern uint8_t gFont[];
 
 static void
-draw_char(char c)
+draw_char(Frame_Buffer *fb, char c)
 {
-	static int cursorX = 0;
 	uint8_t *glyph = gFont + GLYPH_BYTES * c;
 
 	switch (c) {
 		case '\r':
-			cursorX = 0;
+			fb->cursorX = 0;
 			return;
 		case '\n':
-			scroll_up();
+			scroll_up(fb);
 			return;
 		case '\b':
-			if (!cursorX)
+			if (!fb->cursorX)
 				return;
 
-			cursorX--;
+			fb->cursorX--;
 
 			/* Assume the glyph for '\b' is empty */
 			break;
 	}
 
-	if (cursorX == CONSOLE_WIDTH) {
-		cursorX = 0;
-		scroll_up();
+	if (fb->cursorX == CONSOLE_WIDTH) {
+		fb->cursorX = 0;
+		scroll_up(fb);
 	}
 
 	uint32_t startY = GLYPH_HEIGHT * (CONSOLE_HEIGHT - 1);
-	uint32_t startX = GLYPH_WIDTH * cursorX;
+	uint32_t startX = GLYPH_WIDTH * fb->cursorX;
 	for (uint32_t y = 0; y < GLYPH_HEIGHT; y++)
 		for (uint32_t x = 0; x < GLYPH_WIDTH; x++)
-			gFBStatus.drawPixel(x + startX, y + startY,
-					    glyph[y] & (1 << (7 - x)));
+			fb->drawPixel(fb, x + startX, y + startY,
+				      glyph[y] & (1 << (7 - x)));
 
 	if (c != '\b')
-		cursorX++;
+		fb->cursorX++;
 }
 
 void
@@ -129,10 +132,9 @@ graphics_write(const char *buf)
 		return;
 
 	while (*buf) {
-		if (*buf >= 0 && *buf <= 127)
-			draw_char(*buf);
-		else
-			draw_char(' ');
+		for (int i = 0; i < gFBNum; i++)
+			draw_char(&gFBs[i],
+				  *buf >= 0 && *buf <= 127 ? *buf : ' ');
 
 		buf++;
 	}
@@ -157,6 +159,17 @@ fbmode_is_supported(Efi_Graphics_Output_Mode_Info *info)
 }
 
 static int
+is_buffer_duplicated(Efi_Graphics_Output_Protocol *gop)
+{
+	for (size_t i = 0; i < gFBNum; i++) {
+		if (gop->mode->fbBase == gFBs[i].base)
+			return 1;
+	}
+
+	return 0;
+}
+
+static int
 gop_determine_mode(Efi_Graphics_Output_Protocol *gop,
 		   Efi_Graphics_Output_Mode_Info **info)
 {
@@ -168,40 +181,67 @@ gop_determine_mode(Efi_Graphics_Output_Protocol *gop,
 			return -1;
 		}
 
-		if (fbmode_is_supported(*info))
-			return mode;
+		if (!fbmode_is_supported(*info))
+			continue;
+
+		ret = efi_method(gop, setMode, mode);
+		if (ret) {
+			pr_err("Failed to set GOP to mode %u: %d\n", mode, ret);
+			return -1;
+		}
+
+		return is_buffer_duplicated(gop);
 	}
 
 	return -1;
 }
 
 static int
-gop_setup_mode(Efi_Graphics_Output_Protocol *gop,
-	       int mode, Efi_Graphics_Output_Mode_Info *info)
+gop_setup_mode(Frame_Buffer *fb, Efi_Graphics_Output_Protocol *gop,
+	       Efi_Graphics_Output_Mode_Info *info)
 {
-	int ret = efi_method(gop, setMode, mode);
-	if (ret) {
-		pr_err("Failed to set GOP to mode %u: %d\n", mode, ret);
-		return -1;
-	}
-
 	void *buf = malloc_pages(gop->mode->fbSize);
 	if (!buf) {
 		pr_err("Failed to allocate framebuffer for GOP\n");
 		return -1;
 	}
 
-	gFBStatus = (struct gFBStatus) {
+	*fb = (struct Frame_Buffer) {
 			.height		= gop->mode->info->verticalRes,
 			.scanlineWidth	= gop->mode->info->pixelPerScanline,
 			.pixelMask	= 0x00ffffff,
 			.base		= gop->mode->fbBase,
 			.buf		= buf,
 			.drawPixel	= draw_pixel,
-		    };
+			.cursorX	= 0,
+	};
 
-	fb_memset(gFBStatus.base, 0, gop->mode->fbSize);
-	memset(gFBStatus.buf, 0, gop->mode->fbSize);
+	fb_memset(fb->base, 0, gop->mode->fbSize);
+	memset(fb->buf, 0, gop->mode->fbSize);
+
+	return 0;
+}
+
+static int
+gop_try_init(Efi_Handle handle, Frame_Buffer *fb)
+{
+	Efi_Graphics_Output_Mode_Info *info = NULL;
+	Efi_Graphics_Output_Protocol *gop;
+
+	efi_handle_protocol(handle, EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID, &gop);
+
+	int ret = gop_determine_mode(gop, &info);
+	if (ret) {
+		pr_info("Skip graphics initialization: No suitable mode\n");
+		return -1;
+	}
+
+	pr_info("Resolution %ux%u\n", info->horizontalRes, info->verticalRes);
+
+	if (gop_setup_mode(fb, gop, info)) {
+		pr_err("Failed to setup GOP mode\n");
+		return -1;
+	}
 
 	return 0;
 }
@@ -210,35 +250,37 @@ void
 graphics_init(void)
 {
 	Efi_Guid gopGuid = EFI_GRAPHICS_OUTPUT_PROTOCOL_GUID;
-	Efi_Graphics_Output_Protocol *gop = NULL;
+	size_t handleBufSize = 0;
 	Efi_Status ret;
 
-	ret = efi_call(gBS->locateProtocol, &gopGuid, NULL, (void **)&gop);
+	ret = efi_call(gBS->locateHandle, Efi_Locate_By_Protocol, &gopGuid,
+		       NULL, &handleBufSize, NULL);
 	ret = EFI_ERRNO(ret);
 	if (ret == EFI_NOT_FOUND) {
-		pr_info("Skip graphics initialization: GOP isn't supported\n");
+		pr_info("Skip graphics initialization: no GOP found\n");
 		return;
-	} else if (ret) {
+	} else if (ret != EFI_BUFFER_TOO_SMALL) {
 		pr_err("locateProtocol returns %lu for GOP\n", ret);
 		panic("Failed to locate GOP handle");
 	}
 
-	Efi_Graphics_Output_Mode_Info *info = NULL;
-	int mode = gop_determine_mode(gop, &info);
-	if (mode < 0) {
-		pr_info("Skip graphics initialization: No suitable mode\n");
-		return;
+	size_t handleNum = handleBufSize / sizeof(Efi_Handle);
+	Efi_Handle handles[handleNum];
+	efi_call(gBS->locateHandle, Efi_Locate_By_Protocol, &gopGuid, NULL,
+		 &handleBufSize, handles);
+
+	gFBs = malloc(sizeof(*gFBs) * handleNum);
+
+	for (size_t i = 0; i < handleNum; i++) {
+		ret = gop_try_init(handles[i], &gFBs[gFBNum]);
+		if (!ret)
+			gFBNum++;
 	}
 
-	pr_info("Graphics GOP mode = %u\n", mode);
-	pr_info("Resolution %ux%u\n", info->horizontalRes, info->verticalRes);
-
-	if (gop_setup_mode(gop, mode, info)) {
-		pr_err("Failed to setup GOP mode\n");
-		return;
+	if (gFBNum) {
+		pr_info("Graphics initialized\n");
+		gGraphicsAvailable = 1;
+	} else {
+		pr_info("No suitable GOP device found\n");
 	}
-
-	pr_info("Graphics initialized\n");
-
-	gGraphicsAvailable = 1;
 }
