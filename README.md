@@ -96,6 +96,8 @@ Simply run `make` in the top directory, which should soon complete with
 - `CCASFLAGS`: Add extra flags when assembling assembly.
 - `LDFLAGS`: Add extra flags when linking the ELF file.
 - `PYTHON`: Should point to a Python-3 compatible Python interpreter.
+- `DEBUG`: When set, loli-loader is built with optimization disabled (instead
+  of the default `-O2`) and debug info enabled.
 
 For cross-compilation, it's usually necessary to adjust `ARCH`, `CC`, `CCAS`
 and `CCLD`. An exception is building with Clang and LLD, where you could
