@@ -16,6 +16,7 @@ typedef struct Frame_Buffer {
 	uint32_t height;
 	uint32_t scanlineWidth;
 	uint32_t pixelMask;
+	uint32_t bpp;
 	volatile void *base;
 	void *buf;
 	uint32_t cursorX;
@@ -38,7 +39,7 @@ int gGraphicsAvailable;
 static size_t
 console_line_bytes(Frame_Buffer *fb)
 {
-	return GLYPH_HEIGHT * fb->scanlineWidth * 4;
+	return GLYPH_HEIGHT * fb->scanlineWidth * fb->bpp / 8;
 }
 
 static void
@@ -74,7 +75,7 @@ scroll_up(Frame_Buffer *fb)
 }
 
 static void
-draw_pixel(Frame_Buffer *fb, uint32_t x, uint32_t y, int fill)
+draw_pixel_32b(Frame_Buffer *fb, uint32_t x, uint32_t y, int fill)
 {
 	volatile uint32_t *base = fb->base;
 	uint32_t *buf = fb->buf;
@@ -83,6 +84,21 @@ draw_pixel(Frame_Buffer *fb, uint32_t x, uint32_t y, int fill)
 	uint32_t data = fill ? fb->pixelMask : 0;
 
 	base[offset] = buf[offset] = data;
+}
+
+static void
+draw_pixel_anymask(Frame_Buffer *fb, uint32_t x, uint32_t y, int fill)
+{
+	volatile uint8_t *base = fb->base;
+	uint8_t *buf = fb->buf;
+
+	uint32_t offset = y * fb->scanlineWidth + x;
+	offset *= fb->bpp / 8;
+	uint32_t data = fill ? fb->pixelMask : 0;
+
+	uint32_t size = fb->bpp / 8;
+	fb_memcpy(base + offset, &data, size);
+	memcpy(buf + offset, &data, size);
 }
 
 extern uint8_t gFont[];
@@ -140,6 +156,32 @@ graphics_write(const char *buf)
 	}
 }
 
+static uint32_t
+compose_pixel_bitmask(Efi_Pixel_Bitmask *pm, int reserved)
+{
+	uint32_t mask = 0;
+
+	mask |= pm->redMask;
+	mask |= pm->greenMask;
+	mask |= pm->blueMask;
+	mask |= reserved ? pm->reservedMask : 0;
+
+	return mask;
+}
+
+static int
+mask_to_bpp(uint32_t mask)
+{
+	int i = 32;
+
+	while (!(mask & (1 << 31))) {
+		mask <<= 1;
+		i--;
+	}
+
+	return i;
+}
+
 static int
 fbmode_is_supported(Efi_Graphics_Output_Mode_Info *info)
 {
@@ -147,10 +189,14 @@ fbmode_is_supported(Efi_Graphics_Output_Mode_Info *info)
 	    info->verticalRes < MIN_VERTICAL_RESOLUTION)
 		return 0;
 
+	uint32_t mask;
 	switch (info->pixelFormat) {
 	case PIXEL_RGB_RESERVED_8888:
 	case PIXEL_BGR_RESERVED_8888:
 		return 1;
+	case PIXEL_BIT_MASK:
+		mask = compose_pixel_bitmask(&info->pixelInfo, 1);
+		return mask_to_bpp(mask) % 8 == 0;
 	default:
 		break;
 	};
@@ -209,12 +255,28 @@ gop_setup_mode(Frame_Buffer *fb, Efi_Graphics_Output_Protocol *gop,
 	*fb = (struct Frame_Buffer) {
 			.height		= gop->mode->info->verticalRes,
 			.scanlineWidth	= gop->mode->info->pixelPerScanline,
-			.pixelMask	= 0x00ffffff,
 			.base		= gop->mode->fbBase,
 			.buf		= buf,
-			.drawPixel	= draw_pixel,
 			.cursorX	= 0,
 	};
+
+	switch (info->pixelFormat) {
+	case PIXEL_RGB_RESERVED_8888:
+	case PIXEL_BGR_RESERVED_8888:
+		fb->pixelMask = 0x00ffffff;
+		fb->bpp = 32;
+		fb->drawPixel = draw_pixel_32b;
+		break;
+	case PIXEL_BIT_MASK: {
+		fb->pixelMask = compose_pixel_bitmask(&info->pixelInfo, 0);
+		fb->bpp = mask_to_bpp(
+				compose_pixel_bitmask(&info->pixelInfo, 0));
+		fb->drawPixel = draw_pixel_anymask;
+		break;
+	}
+	default:	/* unreachable case */
+		break;
+	}
 
 	fb_memset(fb->base, 0, gop->mode->fbSize);
 	memset(fb->buf, 0, gop->mode->fbSize);
