@@ -9,6 +9,7 @@
 #define STUB(n) __efi_call##n
 
 	.global STUB(1), STUB(2), STUB(3), STUB(4), STUB(5), STUB(6)
+	.global STUB(10)
 
 /*
  *	SystemV ABI: %rdi, %rsi, %rdx, %rcx, %r8, %r9, stack
@@ -96,5 +97,36 @@ STUB(6):
 	addq		$56,		%rsp
 
 	retq
+
+STUB(10):
+	addq		$-8,		%rsp
+
+	movq		40(%rsp),	%rax
+	movq		%rax,		-8(%rsp)
+
+	movq		32(%rsp),	%rax
+	movq		%rax,		-16(%rsp)
+
+	movq		24(%rsp),	%rax
+	movq		%rax,		-24(%rsp)
+
+	movq		16(%rsp),	%rax
+	movq		%rax,		-32(%rsp)
+
+	movq		%r9,		-40(%rsp)
+	movq		%r8,		-48(%rsp)
+
+	movq		48(%rsp),	%rax
+
+	movq		%rdx,		%r8
+	movq		%rcx,		%r9
+	movq		%rdi,		%rcx
+	movq		%rsi,		%rdx
+
+	addq		$-80,		%rsp
+	callq		*%rax
+
+	addq		$88,		%rsp
+	ret
 
 #endif	// LOLI_TARGET_X86_64
