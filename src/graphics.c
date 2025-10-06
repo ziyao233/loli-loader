@@ -16,10 +16,9 @@ static struct gFBStatus {
 	uint32_t height;
 	uint32_t scanlineWidth;
 	uint32_t pixelMask;
-	volatile uint32_t *base;
-	uint32_t *buf;
+	volatile void *base;
+	void *buf;
 	void (*drawPixel)(uint32_t x, uint32_t y, int fiil);
-	void (*scrollUp)(void);
 } gFBStatus;
 
 int gGraphicsAvailable;
@@ -35,34 +34,51 @@ int gGraphicsAvailable;
 static size_t
 console_line_bytes(void)
 {
-	return 4 * GLYPH_HEIGHT * gFBStatus.scanlineWidth;
+	return GLYPH_HEIGHT * gFBStatus.scanlineWidth * 4;
+}
+
+static void
+fb_memset(volatile void *dst, int c, size_t n)
+{
+	volatile uint8_t *p = dst;
+
+	while (n--)
+		*(p++) = c;
+}
+
+static void
+fb_memcpy(volatile void *dst, void *src, size_t n)
+{
+	volatile uint8_t *pDst = dst, *pSrc = src;
+
+	while (n--)
+		*(pDst++) = *(pSrc++);
 }
 
 static void
 scroll_up(void)
 {
-	volatile uint32_t *p1 = gFBStatus.base;
-	volatile uint32_t *p2 = gFBStatus.buf + console_line_bytes() / 4;
-	uint32_t movePixels = console_line_bytes() * (CONSOLE_HEIGHT - 1) / 4;
+	size_t moveSize = console_line_bytes() * (CONSOLE_HEIGHT - 1);
+	volatile uint8_t *base = gFBStatus.base;
+	uint8_t *buf = gFBStatus.buf;
 
-	for (size_t i = 0; i < movePixels; i++)
-		*(p1++) = *(p2++);
+	fb_memcpy(base, buf + console_line_bytes(), moveSize);
+	fb_memset(base + moveSize, 0, console_line_bytes());
 
-	for (size_t i = 0; i < console_line_bytes() / 4; i++)
-		*(p1++) = 0;
-
-	memmove(gFBStatus.buf, gFBStatus.buf + console_line_bytes() / 4,
-		movePixels * 4);
-	memset(gFBStatus.buf + movePixels, 0, console_line_bytes());
+	memmove(buf, buf + console_line_bytes(), moveSize);
+	memset(buf + moveSize, 0, console_line_bytes());
 }
 
 static void
 draw_pixel(uint32_t x, uint32_t y, int fill)
 {
+	volatile uint32_t *base = gFBStatus.base;
+	uint32_t *buf = gFBStatus.buf;
+
 	uint32_t offset = y * gFBStatus.scanlineWidth + x;
 	uint32_t data = fill ? gFBStatus.pixelMask : 0;
 
-	gFBStatus.base[offset] = gFBStatus.buf[offset] = data;
+	base[offset] = buf[offset] = data;
 }
 
 extern uint8_t gFont[];
@@ -78,7 +94,7 @@ draw_char(char c)
 			cursorX = 0;
 			return;
 		case '\n':
-			gFBStatus.scrollUp();
+			scroll_up();
 			return;
 		case '\b':
 			if (!cursorX)
@@ -92,7 +108,7 @@ draw_char(char c)
 
 	if (cursorX == CONSOLE_WIDTH) {
 		cursorX = 0;
-		gFBStatus.scrollUp();
+		scroll_up();
 	}
 
 	uint32_t startY = GLYPH_HEIGHT * (CONSOLE_HEIGHT - 1);
@@ -122,6 +138,74 @@ graphics_write(const char *buf)
 	}
 }
 
+static int
+fbmode_is_supported(Efi_Graphics_Output_Mode_Info *info)
+{
+	if (info->horizontalRes < MIN_HORIZONTAL_RESOLUTION ||
+	    info->verticalRes < MIN_VERTICAL_RESOLUTION)
+		return 0;
+
+	switch (info->pixelFormat) {
+	case PIXEL_RGB_RESERVED_8888:
+	case PIXEL_BGR_RESERVED_8888:
+		return 1;
+	default:
+		break;
+	};
+
+	return 0;
+}
+
+static int
+gop_determine_mode(Efi_Graphics_Output_Protocol *gop,
+		   Efi_Graphics_Output_Mode_Info **info)
+{
+	for (int mode = 0; mode < gop->mode->maxMode; mode++) {
+		uint_native size;
+		int ret = efi_method(gop, queryMode, mode, &size, info);
+		if (ret) {
+			pr_err("Failed to query GOP mode %u: %d\n", mode, ret);
+			return -1;
+		}
+
+		if (fbmode_is_supported(*info))
+			return mode;
+	}
+
+	return -1;
+}
+
+static int
+gop_setup_mode(Efi_Graphics_Output_Protocol *gop,
+	       int mode, Efi_Graphics_Output_Mode_Info *info)
+{
+	int ret = efi_method(gop, setMode, mode);
+	if (ret) {
+		pr_err("Failed to set GOP to mode %u: %d\n", mode, ret);
+		return -1;
+	}
+
+	void *buf = malloc_pages(gop->mode->fbSize);
+	if (!buf) {
+		pr_err("Failed to allocate framebuffer for GOP\n");
+		return -1;
+	}
+
+	gFBStatus = (struct gFBStatus) {
+			.height		= gop->mode->info->verticalRes,
+			.scanlineWidth	= gop->mode->info->pixelPerScanline,
+			.pixelMask	= 0x00ffffff,
+			.base		= gop->mode->fbBase,
+			.buf		= buf,
+			.drawPixel	= draw_pixel,
+		    };
+
+	fb_memset(gFBStatus.base, 0, gop->mode->fbSize);
+	memset(gFBStatus.buf, 0, gop->mode->fbSize);
+
+	return 0;
+}
+
 void
 graphics_init(void)
 {
@@ -139,59 +223,22 @@ graphics_init(void)
 		panic("Failed to locate GOP handle");
 	}
 
-	uint32_t mode;
 	Efi_Graphics_Output_Mode_Info *info = NULL;
-	for (mode = 0; mode < gop->mode->maxMode; mode++) {
-		uint_native size;
-		ret = efi_method(gop, queryMode, mode, &size, &info);
-		if (ret) {
-			pr_err("Failed to query GOP mode %u: %d\n", mode, ret);
-			return;
-		}
-
-		if (info->pixelFormat != PIXEL_RGB_RESERVED_8888 &&
-		    info->pixelFormat != PIXEL_BGR_RESERVED_8888)
-			continue;
-
-		if (info->horizontalRes >= MIN_HORIZONTAL_RESOLUTION &&
-		    info->verticalRes >= MIN_VERTICAL_RESOLUTION)
-			break;
-	}
-
-	if (mode == gop->mode->maxMode) {
+	int mode = gop_determine_mode(gop, &info);
+	if (mode < 0) {
 		pr_info("Skip graphics initialization: No suitable mode\n");
 		return;
 	}
 
-	ret = efi_method(gop, setMode, mode);
-	if (ret) {
-		pr_err("Failed to setup GOP mode %u: %d\n", mode, ret);
-		return;
-	}
-
-	uint32_t *buf = malloc_pages(gop->mode->fbSize * 4);
-	if (!buf) {
-		pr_err("Failed to allocate framebuffer for GOP\n");
-		return;
-	}
-
-	pr_info("Graphics initialized: GOP mode = %u\n", mode);
+	pr_info("Graphics GOP mode = %u\n", mode);
 	pr_info("Resolution %ux%u\n", info->horizontalRes, info->verticalRes);
 
-	gFBStatus = (struct gFBStatus) {
-			.base		= gop->mode->fbBase,
-			.pixelMask	= 0x00ffffff,
-			.height		= gop->mode->info->verticalRes,
-			.buf		= buf,
-			.scanlineWidth	= gop->mode->info->pixelPerScanline,
-			.drawPixel	= draw_pixel,
-			.scrollUp	= scroll_up,
-		    };
-
-	for (size_t i = 0; i < gop->mode->fbSize; i++) {
-		gFBStatus.base[i]	= 0;
-		gFBStatus.buf[i]	= 0;
+	if (gop_setup_mode(gop, mode, info)) {
+		pr_err("Failed to setup GOP mode\n");
+		return;
 	}
+
+	pr_info("Graphics initialized\n");
 
 	gGraphicsAvailable = 1;
 }
