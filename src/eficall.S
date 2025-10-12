@@ -129,4 +129,25 @@ STUB(10):
 	addq		$88,		%rsp
 	ret
 
+	.global		initrd_load_file
+
+initrd_load_file:
+	addq		$-8,		%rsp
+	pushq		%rdi
+	pushq		%rsi
+
+	movq		%rcx,		%rdi
+	movq		%rdx,		%rsi
+	movq		%r8,		%rdx
+	movq		%r9,		%rcx
+	movq		64(%rsp),	%r8
+
+	callq		_initrd_load_file
+
+	popq		%rsi
+	popq		%rdi
+	addq		$8,		%rsp
+
+	ret
+
 #endif	// LOLI_TARGET_X86_64

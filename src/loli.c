@@ -19,6 +19,7 @@
 #include <fdt.h>
 #include <graphics.h>
 #include <serial.h>
+#include <initrd.h>
 
 #define LOLI_CFG "loli.cfg"
 
@@ -135,23 +136,6 @@ load_efi_image(Boot_Entry *entry, void *kernelBase, int64_t kernelSize)
 			&entry->kernelHandle) != EFI_SUCCESS;
 }
 
-static void
-setup_initrd(void *base, int64_t size)
-{
-	struct {
-		uint_native base;
-		uint_native size;
-	} *initrd = malloc(sizeof(*initrd));
-
-	initrd->base = (uint_native)base;
-	initrd->size = (uint_native)size;
-
-	efi_install_configuration_table(
-		EFI_GUID(0x5568e427, 0x68fc, 0x4f3d,
-			 0xac, 0x74, 0xca, 0x55, 0x52, 0x31, 0xcc, 0x68),
-		initrd);
-}
-
 static int
 load_and_validate_entry(const char *p, Boot_Entry *entry)
 {
@@ -184,20 +168,13 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 
 	char *initrd = get_pair(p, "initrd");
 	if (initrd) {
-#define MiB	1024 * 1024
 		int64_t initrdSize = file_get_size(initrd);
 		if (initrdSize < 0) {
 			pr_err("Can't load initrd %s\n", initrd);
 			goto unload_image;
 		}
 
-		/*
-		 *	We reserve 2MiB memory ahead the initrd start and
-		 *	2MiB after its end, to avoid RISC-V kernel considers
-		 *	kernel and initrd overlaps.
-		 */
-		void *initrdBase = malloc_pages(initrdSize + 4 * MiB);
-		initrdBase = (char *)initrdBase + 2 * MiB;
+		void *initrdBase = malloc_pages(initrdSize);
 		initrdSize = file_load(initrd, &initrdBase);
 		if (initrdSize < 0) {
 			pr_err("Can't load initrd %s\n", initrd);
@@ -206,7 +183,7 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 
 		pr_info("Initrd %s, size = %lu\n", initrd, initrdSize);
 
-		setup_initrd(initrdBase, initrdSize);
+		initrd_setup(initrdBase, initrdSize);
 	} else {
 		pr_info("Initrd: (none)\n");
 	}
