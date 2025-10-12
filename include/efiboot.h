@@ -51,6 +51,10 @@ typedef enum {
 } Efi_Type_Delay;
 
 typedef enum {
+	EFI_NATIVE_INTERFACE = 0,
+} Efi_Interface_Type;
+
+typedef enum {
 	Efi_Locate_All_Handles,
 	Efi_Locate_By_Register_Notify,
 	Efi_Locate_By_Protocol,
@@ -84,9 +88,14 @@ typedef struct {
 	Efi_Status (*closeEvent)(Efi_Event event);
 	Efi_Handle checkEvent;
 
-	Efi_Handle installProtocolInterface;
+	Efi_Status (*installProtocolInterface)(Efi_Handle *handle,
+					       Efi_Guid *protocol,
+					       Efi_Interface_Type type,
+					       void *interface);
 	Efi_Handle reinstallProtocolInterface;
-	Efi_Handle uninstallProtocolInterface;
+	Efi_Status (*uninstallProtocolInterface)(Efi_Handle handle,
+						 Efi_Guid *protocol,
+						 void *interface);
 	Efi_Status (*handleProtocol)(Efi_Handle handle, Efi_Guid *protocol,
 				     void **interface);
 	Efi_Handle reserved;
