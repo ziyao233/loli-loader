@@ -52,6 +52,7 @@ typedef struct {
 		(d0), (d1), (d2), (d3), (d4), (d5), (d6), (d7) } }
 
 #define EFI_ERRNO(x)			((x) & ~(1ULL << 63))
+#define TO_EFI_ERRNO(x)			((x) | (1ULL << 63))
 
 #define EFI_SUCCESS			0
 #define EFI_INVALID_PARAMETER		2
