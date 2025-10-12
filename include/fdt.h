@@ -24,4 +24,6 @@ typedef struct {
 
 #pragma pack(pop)
 
+void fdt_fixup(void);
+
 #endif	// __LOLI_FDT_H_INC__
