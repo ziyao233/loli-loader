@@ -23,13 +23,6 @@
 
 #define LOLI_CFG "loli.cfg"
 
-void
-printn(const char *p, size_t len)
-{
-	while (len--)
-		printf("%c", *(p++));
-}
-
 typedef struct {
 	Efi_Handle kernelHandle;
 } Boot_Entry;
@@ -240,7 +233,7 @@ main(Efi_Handle imageHandle, Efi_System_Table *st)
 		const char *name = extlinux_get_value(p, "label", &namelen);
 
 		printf("%d: ", entryNum);
-		printn(name, namelen);
+		puts_sized(name, namelen);
 		printf("\n");
 
 		entryNum++;
