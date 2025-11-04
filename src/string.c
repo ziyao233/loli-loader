@@ -200,16 +200,17 @@ vsprintf(char *p, const char *format, va_list va)
 }
 
 void *
-memcpy(void *dst, void *src, size_t n)
+memcpy(void *dst, const void *src, size_t n)
 {
-	char *pDst = dst, *pSrc = src;
+	const char *pSrc = src;
+	char *pDst = dst;
 	while (n--)
 		*(pDst++) = *(pSrc++);
 	return dst;
 }
 
 void *
-memmove(void *dst, void *src, size_t n)
+memmove(void *dst, const void *src, size_t n)
 {
 	return memcpy(dst, src, n);
 }

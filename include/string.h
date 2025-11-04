@@ -24,8 +24,8 @@ size_t str2wcs(wchar_t *wcs, const char *str);
 
 void vsprintf(char *p, const char *format, va_list va);
 
-void *memcpy(void *dst, void *src, size_t n);
-void *memmove(void *dst, void *src, size_t n);
+void *memcpy(void *dst, const void *src, size_t n);
+void *memmove(void *dst, const void *src, size_t n);
 void *memset(void *mem, int c, size_t n);
 int atou(const char *p);
 
