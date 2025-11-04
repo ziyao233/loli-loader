@@ -31,15 +31,10 @@ interaction_init(void)
 	gWideCharBuf = malloc(sizeof(*gWideCharBuf) * 1024);
 }
 
-void
-printf(const char *format, ...)
+static void
+puts_internal(const char *s)
 {
-	va_list va;
-	va_start(va, format);
-
-	vsprintf(gFormatBuf, format, va);
-
-	const char *src = gFormatBuf;
+	const char *src = s;
 	char *dst = gLineEndConvertBuf;
 	while (*src) {
 		if (*src == '\n')
@@ -59,6 +54,25 @@ printf(const char *format, ...)
 
 	if (gGraphicsAvailable)
 		graphics_write(gLineEndConvertBuf);
+}
+
+void
+puts_sized(const char *s, size_t size)
+{
+	memcpy(gFormatBuf, s, size);
+	gFormatBuf[size] = '\0';
+	puts_internal(gFormatBuf);
+}
+
+void
+printf(const char *format, ...)
+{
+	va_list va;
+	va_start(va, format);
+
+	vsprintf(gFormatBuf, format, va);
+
+	puts_internal(gFormatBuf);
 
 	va_end(va);
 }

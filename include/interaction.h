@@ -12,6 +12,7 @@
 #define EOF		-1
 
 void interaction_init(void);
+void puts_sized(const char *s, size_t size);
 void printf(const char *format, ...);
 int getchar_timeout(int timeout);
 char *getline_timeout(int timeout);
