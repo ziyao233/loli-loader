@@ -2,7 +2,7 @@
 /*
  *	loli-loader
  *	/src/loli.c
- *	Copyright (c) 2024 Yao Zi.
+ *	Copyright (c) 2024-2025 Yao Zi.
  */
 
 #include <efidef.h>
@@ -20,45 +20,13 @@
 #include <graphics.h>
 #include <serial.h>
 #include <initrd.h>
+#include <menu.h>
 
 #define LOLI_CFG "loli.cfg"
 
 typedef struct {
 	Efi_Handle kernelHandle;
 } Boot_Entry;
-
-static char *
-get_pair(const char *cfg, const char *key)
-{
-	size_t len = 0;
-	const char *res = extlinux_get_value(cfg, key, &len);
-
-	if (!res)
-		return 0;
-
-	char *copy = malloc(len + 1);
-	strscpy(copy, res, len + 1);
-
-	return copy;
-}
-
-int
-retrieve_timeout(const char *cfg)
-{
-	char *res = get_pair(cfg, "timeout");
-	if (!res)
-		return 0;
-
-	int timeout = atou(res);
-	if (timeout < 0) {
-		pr_warn("invalid timeout \"%s\", use 0 instead\n", res);
-		timeout = 0;
-	}
-
-	free(res);
-
-	return timeout;
-}
 
 int
 wait_for_boot_entry(int timeout)
@@ -77,18 +45,6 @@ wait_for_boot_entry(int timeout)
 
 	return entry >= 0 ? entry : -1;
 }
-
-static const char *
-get_entry(const char *cfg, int index)
-{
-	const char *entry = extlinux_next_entry(cfg, NULL);
-
-	while (index--)
-		entry = extlinux_next_entry(NULL, entry);
-
-	return entry;
-}
-
 
 static void
 setup_append(Efi_Handle kernelHandle, char *append)
@@ -133,7 +89,7 @@ static int
 load_and_validate_entry(const char *p, Boot_Entry *entry)
 {
 	/* Releasing of temporary objects is delayed until everything sets up */
-	char *kernel = get_pair(p, "kernel");
+	char *kernel = menu_get_pair(p, "kernel");
 	if (!kernel) {
 		pr_err("No kernel defined for the entry!\n");
 		goto out_err;
@@ -159,7 +115,7 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 
 	pr_info("Kernel %s, size = %lu\n", kernel, kernelSize);
 
-	char *initrd = get_pair(p, "initrd");
+	char *initrd = menu_get_pair(p, "initrd");
 	if (initrd) {
 		int64_t initrdSize = file_get_size(initrd);
 		if (initrdSize < 0) {
@@ -181,7 +137,7 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 		pr_info("Initrd: (none)\n");
 	}
 
-	char *append = get_pair(p, "append");
+	char *append = menu_get_pair(p, "append");
 	pr_info("Append: %s\n", append ? append : "(none)");
 
 	setup_append(entry->kernelHandle, append);
@@ -224,7 +180,7 @@ main(Efi_Handle imageHandle, Efi_System_Table *st)
 		panic("Can't load configuration");
 	cfg[cfgSize] = '\0';
 
-	int timeout = retrieve_timeout(cfg);
+	int timeout = menu_get_timeout(cfg);
 	int entryNum = 0;
 	for (const char *p = extlinux_next_entry(cfg, NULL);
 	     p;
@@ -248,7 +204,7 @@ main(Efi_Handle imageHandle, Efi_System_Table *st)
 			continue;
 
 		if (selectedEntry >= 0 && selectedEntry < entryNum) {
-			entry = get_entry(cfg, selectedEntry);
+			entry = menu_get_nth_entry(cfg, selectedEntry);
 			if (!load_and_validate_entry(entry, &bootEntry))
 				break;
 			else
