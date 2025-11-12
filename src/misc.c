@@ -15,15 +15,8 @@
 void
 panic(const char *msg)
 {
-	printf("PANIC: ");
+	printf("PANIC: %s\n", msg);
+	printf("PANIC: can't boot\n");
 
-	wchar_t tmp[2] = { 0, 0 };
-	while (*msg) {
-		tmp[0] = *msg;
-		efi_method(gST->conOut, outputString, tmp);
-		msg++;
-	}
-
-	printf("\nPANIC: can't boot\n");
 	while (1) ;
 }
