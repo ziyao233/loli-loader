@@ -28,24 +28,6 @@ typedef struct {
 	Efi_Handle kernelHandle;
 } Boot_Entry;
 
-int
-wait_for_boot_entry(int timeout)
-{
-	printf("Enter entry number: ");
-	char *line = getline_timeout(timeout);
-
-	/* TODO: support "default" option */
-	if (!line) {
-		printf("\nBoot entry 0 by default\n");
-		return 0;
-	}
-
-	int entry = atou(line);
-	free(line);
-
-	return entry >= 0 ? entry : -1;
-}
-
 static void
 setup_append(Efi_Handle kernelHandle, char *append)
 {
@@ -156,32 +138,45 @@ out_err:
 	return -1;
 }
 
-Efi_Status
-main(Efi_Handle imageHandle, Efi_System_Table *st)
+static char *
+load_cfg(void)
 {
-	efi_init(imageHandle, st);
-
-	interaction_init();
-
-	printf("loli bootloader is initializing\n");
-
-	serial_init();
-	graphics_init();
-
-	printf("loli bootloader (%s built)\n", __DATE__);
-
 	int64_t cfgSize = file_get_size(LOLI_CFG);
 	if (cfgSize < 0)
 		panic("Can't retrive size of configuration");
 
 	char *cfg = malloc(cfgSize + 1);
+
 	cfgSize = file_load(LOLI_CFG, (void **)&cfg);
 	if (cfgSize < 0)
 		panic("Can't load configuration");
+
 	cfg[cfgSize] = '\0';
 
+	return cfg;
+}
+
+static int
+wait_for_boot_entry(int timeout)
+{
+	printf("Enter entry number: ");
+	char *line = getline_timeout(timeout);
+
+	if (!line)
+		return -2;
+
+	int entry = atou(line);
+	free(line);
+
+	return entry >= 0 ? entry : -1;
+}
+
+static Boot_Entry
+cmdline_loop(const char *cfg)
+{
 	int timeout = menu_get_timeout(cfg);
 	int entryNum = 0;
+
 	for (const char *p = extlinux_next_entry(cfg, NULL);
 	     p;
 	     p = extlinux_next_entry(NULL, p)) {
@@ -197,20 +192,45 @@ main(Efi_Handle imageHandle, Efi_System_Table *st)
 
 	const char *entry = NULL;
 	Boot_Entry bootEntry = { NULL };
-	for (int selectedEntry = wait_for_boot_entry(timeout); ;
-	     selectedEntry = wait_for_boot_entry(0)) {
+	while (1) {
+		int selectedEntry = wait_for_boot_entry(timeout);
+		if (selectedEntry < -1) {
+			/* TODO: Support default boot option */
+			printf("\nBooting entry 0 by default\n");
+			selectedEntry = 0;
+		}
+
 		timeout = 0;
-		if (!entryNum)
-			continue;
 
 		if (selectedEntry >= 0 && selectedEntry < entryNum) {
 			entry = menu_get_nth_entry(cfg, selectedEntry);
 			if (!load_and_validate_entry(entry, &bootEntry))
-				break;
+				return bootEntry;
 			else
 				pr_err("Invalid entry\n");
 		}
 	}
+
+	return bootEntry;
+}
+
+Efi_Status
+main(Efi_Handle imageHandle, Efi_System_Table *st)
+{
+	efi_init(imageHandle, st);
+
+	interaction_init();
+
+	printf("loli bootloader is initializing\n");
+
+	serial_init();
+	graphics_init();
+
+	printf("loli bootloader (%s built)\n", __DATE__);
+
+	char *cfg = load_cfg();
+
+	Boot_Entry bootEntry = cmdline_loop(cfg);
 
 	fdt_fixup();
 
