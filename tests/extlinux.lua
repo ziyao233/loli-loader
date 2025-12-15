@@ -149,6 +149,22 @@ kernel label
 			{ next, nil },
 		},
 	},
+	{
+		name	= "label pairs with leading white space characters",
+		conf	= [[
+  label a
+	kernel b
+  label b
+kernel d
+]],
+		opts	= {
+			{ next, "a" },
+			{ get, "kernel", "b" },
+			{ next, "b" },
+			{ get, "kernel", "d" },
+			{ next, nil },
+		},
+	},
 };
 
 local function
