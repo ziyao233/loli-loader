@@ -121,7 +121,7 @@ extlinux_next_entry(const char *conf, const char *last)
 
 	/* skip the last "label" pair */
 	if (last)
-		p = match_key(last, "label");
+		p = next_line(last);
 
 	while (p) {
 		p = skip_space(p);

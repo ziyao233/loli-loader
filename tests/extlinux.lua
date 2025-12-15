@@ -136,7 +136,19 @@ kernel test1]],
 			{ get, "kernel", "test1" },
 			{ next, nil },
 		},
-	}
+	},
+	{
+		name	= "Word \"label\" in values",
+		conf	= [[
+label label a
+kernel label
+]],
+		opts	= {
+			{ next, "label a" },
+			{ get, "kernel", "label" },
+			{ next, nil },
+		},
+	},
 };
 
 local function
