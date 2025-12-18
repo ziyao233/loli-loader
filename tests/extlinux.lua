@@ -177,6 +177,39 @@ label a
 			{ next, nil },
 		},
 	},
+	{
+		name	= "Keys with space",
+		conf	= [[
+label a b
+kernel b
+menu title this is a titleqwq
+initrd /kernel
+label b
+kernel a
+]],
+		opts	= {
+			{ next, "a b" },
+			{ get, "kernel", "b" },
+			{ get, "menu title", "this is a titleqwq" },
+			{ get, "initrd", "/kernel" },
+			{ next, "b" },
+			{ get, "kernel", "a" },
+			{ next, nil },
+		},
+	},
+	{
+		name	= "Keys with trailing spaces",
+		conf	= [[
+label a
+kernel b
+]],
+		opts	= {
+			{ next, "a" },
+			{ get, "kernel", "b" },
+			{ get, "kernel ", nil },
+			{ next, nil },
+		},
+	},
 };
 
 local function

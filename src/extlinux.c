@@ -46,16 +46,29 @@ skip_space(const char *p)
 static const char *
 match_key(const char *p, const char *key)
 {
-	/*
-	 * Compare p and key. The loop never iterates passed the terminator zero
-	 * of either p or key, since the condition is *p && *key, and both p
-	 * and key only advances one character each iteraction of the loop.
-	 */
 	while (*p && *key) {
 		if (*p != *key)
 			return NULL;
+
 		p++;
 		key++;
+
+		/*
+		 * If we encounter a white space character in key, we're
+		 * (obviously) looking for a key with more than one token, like
+		 * "menu title". If we hit a space at the same time in p, this
+		 * is possible.
+		 *
+		 * Skip following spaces in both key and p, and start processing
+		 * from the next token again in the next iteration.
+		 *
+		 * Note when we hit the zero terminator in key, the if-branch is
+		 * skipped, since is_space considers '\0' as non-space.
+		 */
+		if (is_space(key) && is_space(p)) {
+			p	= skip_space(p);
+			key	= skip_space(key);
+		}
 	}
 
 	/*
