@@ -180,11 +180,18 @@ cmdline_loop(const char *cfg)
 	for (const char *p = extlinux_next_entry(cfg, NULL);
 	     p;
 	     p = extlinux_next_entry(NULL, p)) {
-		size_t namelen = 0;
+		size_t namelen = 0, titlelen = 0;
 		const char *name = extlinux_get_value(p, "label", &namelen);
+		const char *title = extlinux_get_value(p, "menu title",
+						       &titlelen);
+
+		if (!title) {
+			title = name;
+			titlelen = namelen;
+		}
 
 		printf("%d: ", entryNum);
-		puts_sized(name, namelen);
+		puts_sized(title, titlelen);
 		printf("\n");
 
 		entryNum++;
