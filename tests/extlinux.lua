@@ -22,8 +22,9 @@ end
 
 local function
 get(iter, self, key, expect)
+	verbose("get key %q, expect %q", key, expect);
+
 	local ret = extlinux.get(iter, key);
-	verbose("get key %q", key);
 	assert(ret == expect,
 	       ("expect %q, got %q"):format(expect, ret));
 	return iter;
@@ -31,9 +32,9 @@ end
 
 local function
 next(iter, self, expect)
-	iter = extlinux.next(iter, key);
-
 	verbose("find next entry, expect %s", expect and expect or "not found");
+
+	iter = extlinux.next(iter, key);
 
 	if not expect then
 		assert(not iter);
