@@ -33,7 +33,7 @@ skip_space(const char *p)
 	while (is_space(p))
 		p++;
 
-	return *p ? p : NULL;
+	return p;
 }
 
 /*
@@ -172,7 +172,7 @@ extlinux_get_value(const char *p, const char *key, unsigned long int *valuelen)
 		 * characters.
 		 */
 		p = skip_space(p);
-		if (!p)
+		if (!*p)
 			break;
 
 		/*

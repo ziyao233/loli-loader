@@ -165,6 +165,17 @@ kernel d
 			{ next, nil },
 		},
 	},
+	{
+		name	= "Incomplete k-v pair with trailing space but no EOL",
+		conf	= [[
+label a
+	kernel ]],
+		opts	= {
+			{ next, "a" },
+			{ get, "kernel", nil },
+			{ next, nil },
+		},
+	},
 };
 
 local function
