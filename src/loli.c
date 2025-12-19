@@ -175,7 +175,14 @@ static Boot_Entry
 cmdline_loop(const char *cfg)
 {
 	int timeout = menu_get_timeout(cfg);
-	int entryNum = 0;
+	int entryNum = 0, defaultEntry = -1;
+
+	size_t defaultEntryLen;
+	const char *defaultEntryName = extlinux_get_value(cfg, "default",
+							  &defaultEntryLen);
+	/* Boot entry 0 by default when there's no default specified */
+	if (!defaultEntryName)
+		defaultEntry = 0;
 
 	for (const char *p = extlinux_next_entry(cfg, NULL);
 	     p;
@@ -194,7 +201,19 @@ cmdline_loop(const char *cfg)
 		puts_sized(title, titlelen);
 		printf("\n");
 
+		if (defaultEntryName && !strncmp(defaultEntryName, name,
+						 defaultEntryLen))
+			defaultEntry = entryNum;
+
 		entryNum++;
+	}
+
+	/* No entry matches the specified default, complain but don't fail */
+	if (defaultEntry < 0) {
+		printf("Invalid default entry \"");
+		puts_sized(defaultEntryName, defaultEntryLen);
+		printf("\", boot entry 0 by default\n");
+		defaultEntry = 0;
 	}
 
 	const char *entry = NULL;
@@ -202,9 +221,8 @@ cmdline_loop(const char *cfg)
 	while (1) {
 		int selectedEntry = wait_for_boot_entry(timeout);
 		if (selectedEntry < -1) {
-			/* TODO: Support default boot option */
-			printf("\nBooting entry 0 by default\n");
-			selectedEntry = 0;
+			printf("\nBooting entry %d by default\n", defaultEntry);
+			selectedEntry = defaultEntry;
 		}
 
 		timeout = 0;
