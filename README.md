@@ -36,20 +36,26 @@ Its format is extlinux-like, for example,
 
 ```
 timeout 3
+default l2
 
-label Linux Boot Test
+label l1
+	menu title Linux RISC-V Boot Debug
 	kernel  /vmlinux-riscv
 	initrd  /initramfs.gz
 	append  earlycon rootwait console=ttyS0 loglevel=9 memblock=debug
 
-label Linux Boot Test Quiet
+label l2
+	menu title Linux RISC-V Boot Quiet
 	kernel  /vmlinux-riscv
 	initrd  /initramfs.gz
 	append  quiet rootwait console=ttyS0
 ```
 
-### Supported keys outside a label
+### Supported keys outside an entry
 
+- `default`: Specify the default entry to boot. Its value should be the label of
+  the default entry. Without specifying, the first entry is booted
+  automatically.
 - `timeout`: Specify timeout before booting the first entry. `0` means no
   timeout and is the default value.
 
@@ -57,7 +63,12 @@ label Linux Boot Test Quiet
 
 - `kernel`
 - `initrd`: Optional
-- `append`: Optional
+- `append`: Optional, command arguments to be passed to the kernel.
+- `menu title`: Optional, pretty description of the entry. When unspecified,
+  the entry's label is shown in boot menu instead.
+
+Note that white space characters are permited in labels, so it's usually
+unnecessary to use `menu title` in hand-written configuration.
 
 ### Treatment to malformed entries
 
