@@ -622,6 +622,8 @@ load_relocs(Executable *exec, Sized_Data *elf, Segment *dynamic,
 	Exec_Reloc *relocs = NULL;
 	uint64_t offset;
 
+	*relocnum = 0;
+
 	if (dynamic_lookup_tag(dynamic, DT_RELA, &offset)) {
 		uint64_t size;
 		assert_msg(dynamic_lookup_tag(dynamic, DT_RELASZ, &size),
@@ -662,7 +664,8 @@ load_relocs(Executable *exec, Sized_Data *elf, Segment *dynamic,
 		verbose("No REL relocations found\n");
 	}
 
-	qsort(relocs, *relocnum, sizeof(Exec_Reloc), reloc_compare);
+	if (relocs)
+		qsort(relocs, *relocnum, sizeof(Exec_Reloc), reloc_compare);
 
 	return relocs;
 }
@@ -876,8 +879,10 @@ create_pe_reloc(Executable *exec, uint64_t baseAddress)
 static void
 write_chunk(FILE *fp, void *data, size_t size)
 {
-	assert_msg(fwrite(data, size, 1, fp) == 1,
-		   "failed to write file\n");
+	if (!size)
+		return;
+
+	assert_msg(fwrite(data, size, 1, fp) == 1, "failed to write file\n");
 }
 
 static void
@@ -936,6 +941,18 @@ typedef struct {
 	uint32_t size;
 } File_Layout;
 
+static bool
+has_pe_reloc(Executable *exec)
+{
+	return exec->relocnum;
+}
+
+static int
+pe_section_num(Executable *exec)
+{
+	return exec->segnum + (has_pe_reloc(exec) ? 1 : 0);
+}
+
 static File_Layout *
 layout_pe_file(Executable *exec, size_t sizeOfHeaders, Sized_Data *peRelocs,
 	       uint32_t fileAlignment)
@@ -961,12 +978,16 @@ layout_pe_file(Executable *exec, size_t sizeOfHeaders, Sized_Data *peRelocs,
 		      (unsigned long)(layout->size));
 	}
 
-	layouts[exec->segnum].offset	= offset;
-	layouts[exec->segnum].size	= ALIGN(peRelocs->size, fileAlignment);
+	if (has_pe_reloc(exec)) {
+		layouts[exec->segnum].offset	= offset;
+		layouts[exec->segnum].size	= ALIGN(peRelocs->size,
+							fileAlignment);
 
-	debug("PE .reloc section locates at offset 0x%lx in file, size = %lu\n",
-	      (unsigned long)(layouts[exec->segnum].offset),
-	      (unsigned long)(layouts[exec->segnum].size));
+		debug("PE .reloc section locates at offset 0x%lx in file, "
+		      "size = %lu\n",
+		      (unsigned long)(layouts[exec->segnum].offset),
+		      (unsigned long)(layouts[exec->segnum].size));
+	}
 
 	return layouts;
 }
@@ -990,7 +1011,7 @@ write_pe(const char *path, Executable *exec, uint64_t baseAddress,
 		   (unsigned int)(exec->executableAlignment),
 		   (unsigned int)fileAlignment);
 
-	size_t sizeOfHeaders = PE32Plus_Image_Header_Size(exec->segnum + 1);
+	size_t sizeOfHeaders = PE32Plus_Image_Header_Size(pe_section_num(exec));
 	sizeOfHeaders = ALIGN(sizeOfHeaders, fileAlignment);
 
 	File_Layout *layouts = layout_pe_file(exec, sizeOfHeaders, peRelocs,
@@ -999,6 +1020,10 @@ write_pe(const char *path, Executable *exec, uint64_t baseAddress,
 	File_Layout *lastLayout = &layouts[exec->segnum];
 
 	Segment *lastSegment = &exec->segments[exec->segnum - 1];
+	/*
+	 * Calculate relocVaddr regardless whether there are relocations,
+	 * since it's necessary for determine the image size.
+	 */
 	uint64_t relocVaddr = ALIGN(lastSegment->vaddr + lastSegment->memsize,
 				    exec->executableAlignment);
 	verbose("PE .reloc section is given vaddr 0x%lx\n",
@@ -1015,8 +1040,7 @@ write_pe(const char *path, Executable *exec, uint64_t baseAddress,
 	write_chunk(out, &(PE_Header) {
 		.signature		= { 'P', 'E', '\0', '\0' },
 		.machine		= PE_IMAGE_MACHINE_AMD64,
-		// One extra section for .reloc
-		.numberOfSections	= exec->segnum + 1,
+		.numberOfSections	= pe_section_num(exec),
 		.timedateStamp		= 0,
 		.pointerToSymbolTable	= 0,
 		.numberOfSymbols	= 0,
@@ -1072,12 +1096,14 @@ write_pe(const char *path, Executable *exec, uint64_t baseAddress,
 			sizeof(PE32Plus_Data_Directory),
 	}, sizeof(PE32Plus_Optional_Windows_Header));
 
-	write_chunk(out, &(PE32Plus_Optional_Data_Directory_Header) {
-		.baseRelocation	= {
+	PE32Plus_Optional_Data_Directory_Header datadir = { { 0 } };
+	if (has_pe_reloc(exec))
+		datadir.baseRelocation = (PE32Plus_Data_Directory) {
 			.rva	= relocVaddr - baseAddress,
 			.size	= peRelocs->size,
-		},
-	}, sizeof(PE32_Optional_Data_Directory_Header));
+		};
+
+	write_chunk(out, &datadir, sizeof(datadir));
 
 	for (size_t i = 0; i < exec->segnum; i++) {
 		Segment *segment = &exec->segments[i];
@@ -1117,23 +1143,26 @@ write_pe(const char *path, Executable *exec, uint64_t baseAddress,
 		write_chunk(out, &sheader, sizeof(sheader));
 	}
 
-	write_chunk(out, &(PE32Plus_Section_Header) {
-		.name			= ".reloc",
-		.virtualSize		= peRelocs->size,
-		.virtualAddress		= relocVaddr - baseAddress,
-		.sizeOfRawData		= lastLayout->size,
-		.pointerToRawData	= lastLayout->offset,
-		.pointerToRelocations	= 0,
-		.pointerToLineNumbers	= 0,
-		.numberOfRelocations	= 0,
-		.numberOfLineNumbers	= 0,
-		.characteristics	= PE32_SCN_CNT_INITIALIZED_DATA	|
-					  PE32_SCN_MEM_DISCARDABLE	|
-					  PE32_SCN_MEM_READ,
-	}, sizeof(PE32Plus_Section_Header));
+	if (has_pe_reloc(exec)) {
+		write_chunk(out, &(PE32Plus_Section_Header) {
+			.name			= ".reloc",
+			.virtualSize		= peRelocs->size,
+			.virtualAddress		= relocVaddr - baseAddress,
+			.sizeOfRawData		= lastLayout->size,
+			.pointerToRawData	= lastLayout->offset,
+			.pointerToRelocations	= 0,
+			.pointerToLineNumbers	= 0,
+			.numberOfRelocations	= 0,
+			.numberOfLineNumbers	= 0,
+			.characteristics	=
+				PE32_SCN_CNT_INITIALIZED_DATA	|
+				PE32_SCN_MEM_DISCARDABLE	|
+				PE32_SCN_MEM_READ,
+		}, sizeof(PE32Plus_Section_Header));
+	}
 
 	write_padding(out, sizeOfHeaders -
-			   PE32Plus_Image_Header_Size(exec->segnum + 1));
+			   PE32Plus_Image_Header_Size(pe_section_num(exec)));
 
 	for (size_t i = 0; i < exec->segnum; i++) {
 		Segment *segment = &exec->segments[i];
@@ -1142,8 +1171,10 @@ write_pe(const char *path, Executable *exec, uint64_t baseAddress,
 		write_padding(out, layouts[i].size - segment->filesize);
 	}
 
-	write_chunk(out, peRelocs->rawData, peRelocs->size);
-	write_padding(out, lastLayout->size - peRelocs->size);
+	if (has_pe_reloc(exec)) {
+		write_chunk(out, peRelocs->rawData, peRelocs->size);
+		write_padding(out, lastLayout->size - peRelocs->size);
+	}
 
 	free(layouts);
 
