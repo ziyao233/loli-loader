@@ -103,6 +103,34 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 
 	pr_info("Kernel %s, size = %lu\n", kernel, kernelSize);
 
+	char *fdt = menu_get_pair(p, "fdt");
+	if (!fdt)
+		fdt = menu_get_pair(p, "devicetree");
+
+	if (fdt) {
+		int64_t fdtSize = file_get_size(fdt);
+		if (fdtSize < 0) {
+			pr_err("Can't load FDT %s\n", fdt);
+			goto unload_image;
+		}
+		if (fdtSize < sizeof(Fdt_Header)) {
+			pr_err("Invalid FDT %s\n", fdt);
+			goto unload_image;
+		}
+		void *fdtBase = malloc(fdtSize);
+		int64_t ret = file_load(fdt, &fdtBase);
+		if (ret < 0) {
+			pr_err("Can't load FDT %s\n", fdt);
+			free(fdtBase);
+			goto unload_image;
+		}
+		pr_info("FDT: %s, size = %lu\n", fdt, ret);
+		fdt_fixup_and_load((Fdt_Header *)fdtBase);
+		free(fdtBase);
+	} else {
+		pr_info("FDT: (none)\n");
+	}
+
 	char *initrd = menu_get_pair(p, "initrd");
 	if (initrd) {
 		int64_t initrdSize = file_get_size(initrd);
