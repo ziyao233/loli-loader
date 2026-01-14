@@ -270,8 +270,6 @@ main(Efi_Handle imageHandle, Efi_System_Table *st)
 
 	Boot_Entry bootEntry = cmdline_loop(cfg);
 
-	fdt_fixup();
-
 	int ret = efi_call(gBS->startImage, bootEntry.kernelHandle, NULL, NULL);
 	pr_err("Failed to start image: %d\n", ret);
 	panic("Cannot boot selected entry");
