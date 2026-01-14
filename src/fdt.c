@@ -40,19 +40,18 @@ fdt_fixup_and_load(Fdt_Header *fdt)
 	Efi_Dt_Fixup_Protocol *dtp = NULL;
 	Efi_Guid dtFixupGuid = EFI_DT_FIXUP_PROTOCOL_GUID;
 	int ret = efi_call(gBS->locateProtocol, &dtFixupGuid, NULL, (void **)&dtp);
-	if (!dtp) {
-		free(copy);
+
+	if (dtp) {
+		ret = efi_method(dtp, fixup, copy, &copySize,
+				 EFI_DT_APPLY_FIXES | EFI_DT_RESERVE_MEMORY);
+		if (ret == EFI_SUCCESS)
+			pr_info("devicetree: applied fixes\n");
+		else
+			pr_info("devicetree: failed to apply fixes\n");
+	} else {
 		pr_info("EFI_DT_FIXUP_PROTOCOL isn't supported, "
 			"apply no fixup\n");
-		return;
 	}
-
-	ret = efi_method(dtp, fixup, copy, &copySize,
-					 EFI_DT_APPLY_FIXES | EFI_DT_RESERVE_MEMORY);
-	if (ret == EFI_SUCCESS)
-		pr_info("devicetree: applied fixes\n");
-	else
-		pr_info("devicetree: failed to apply fixes\n");
 
 	efi_install_configuration_table(EFI_DTB_TABLE_GUID, copy);
 }
