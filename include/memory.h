@@ -12,8 +12,10 @@
 #include <efi.h>
 #include <eficall.h>
 
+void *malloc_type(size_t size, Efi_Memory_Type type);
 void *malloc(size_t s);
 void free(void *p);
+void *realloc_type(void *p, Efi_Memory_Type type, size_t oldSize, size_t size);
 void *realloc(void *p, size_t oldSize, size_t size);
 
 void *malloc_pages(size_t size);
