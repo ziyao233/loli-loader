@@ -42,7 +42,7 @@ MYCFLAGS	?= -ffreestanding -fno-stack-protector -fno-stack-check \
 		   $(DEBUG_FLAGS) $(ARCHFLAGS_yes) $(CFLAGS)
 
 MYCCASFLAGS	?= $(MYCFLAGS) $(CCASFLAGS)
-MYLDFLAGS	= $(LDFLAGS)
+MYLDFLAGS	= -z noexecstack $(LDFLAGS)
 
 OBJS		= src/loli.o src/efi.o src/string.o src/interaction.o
 OBJS		+= src/memory.o src/file.o src/misc.o src/extlinux.o
