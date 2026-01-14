@@ -25,7 +25,7 @@ be32_to_cpu(uint32_t val)
 }
 
 static Fdt_Header *
-search_for_devicetree(size_t *size)
+search_for_devicetree(void)
 {
 	Fdt_Header *fdt = NULL;
 
@@ -42,23 +42,16 @@ search_for_devicetree(size_t *size)
 	if (!fdt)
 		return NULL;
 
-	/* TODO: check compatibility */
-	*size = be32_to_cpu(fdt->totalSize);
 	return fdt;
 }
 
 void
-fdt_fixup(void)
+fdt_fixup_and_load(Fdt_Header *fdt)
 {
-	size_t fdtSize = 0;
-	Fdt_Header *fdt = search_for_devicetree(&fdtSize);
+	/* TODO: check compatibility */
+	size_t fdtSize = be32_to_cpu(fdt->totalSize);
 
-	if (!fdt) {
-		pr_info("DeviceTree: not found\n");
-		return;
-	}
-
-	pr_info("devicetree: found, size %lu\n", fdtSize);
+	pr_info("devicetree: size %lu\n", fdtSize);
 
 	/* TODO: don't use a hard size limit */
 	size_t copySize = fdtSize + 4096;
@@ -83,4 +76,17 @@ fdt_fixup(void)
 		pr_info("devicetree: failed to apply fixes\n");
 
 	efi_install_configuration_table(EFI_DTB_TABLE_GUID, copy);
+}
+
+void
+fdt_fixup(void)
+{
+	Fdt_Header *fdt = search_for_devicetree();
+
+	if (!fdt) {
+		pr_info("DeviceTree: not found\n");
+		return;
+	}
+
+	fdt_fixup_and_load(fdt);
 }
