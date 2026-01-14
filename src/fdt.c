@@ -62,7 +62,7 @@ fdt_fixup(void)
 
 	/* TODO: don't use a hard size limit */
 	size_t copySize = fdtSize + 4096;
-	Fdt_Header *copy = malloc(copySize);
+	Fdt_Header *copy = malloc_type(copySize, EFI_ACPI_RECLAIM_MEMORY);
 	memcpy(copy, fdt, fdtSize);
 
 	Efi_Dt_Fixup_Protocol *dtp = NULL;
