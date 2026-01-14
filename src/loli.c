@@ -122,7 +122,8 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 	char *append = menu_get_pair(p, "append");
 	pr_info("Append: %s\n", append ? append : "(none)");
 
-	setup_append(entry->kernelHandle, append);
+	if (append)
+		setup_append(entry->kernelHandle, append);
 
 	free(kernel);
 	free(append);
