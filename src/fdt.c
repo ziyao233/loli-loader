@@ -24,27 +24,6 @@ be32_to_cpu(uint32_t val)
 	return (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
 }
 
-static Fdt_Header *
-search_for_devicetree(void)
-{
-	Fdt_Header *fdt = NULL;
-
-	for (uint_native i = 0; i < gST->numberOfTableEntries; i++) {
-		Efi_Configuration_Table *t = gST->configurationTable + i;
-
-		Efi_Guid dtbGuid = EFI_DTB_TABLE_GUID;
-		if (!memcmp(&dtbGuid, &t->vendorGuid, sizeof(Efi_Guid))) {
-			fdt = t->vendorTable;
-			break;
-		}
-	}
-
-	if (!fdt)
-		return NULL;
-
-	return fdt;
-}
-
 void
 fdt_fixup_and_load(Fdt_Header *fdt)
 {
@@ -76,17 +55,4 @@ fdt_fixup_and_load(Fdt_Header *fdt)
 		pr_info("devicetree: failed to apply fixes\n");
 
 	efi_install_configuration_table(EFI_DTB_TABLE_GUID, copy);
-}
-
-void
-fdt_fixup(void)
-{
-	Fdt_Header *fdt = search_for_devicetree();
-
-	if (!fdt) {
-		pr_info("DeviceTree: not found\n");
-		return;
-	}
-
-	fdt_fixup_and_load(fdt);
 }
