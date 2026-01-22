@@ -56,6 +56,8 @@ typedef struct {
 	wchar_t fileName[];
 } Efi_File_Info;
 
+#define EFI_FILE_DIRECTORY 0x10
+
 struct Efi_File_Protocol;
 
 typedef struct Efi_Simple_File_System_Protocol {
