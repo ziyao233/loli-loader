@@ -123,6 +123,9 @@ file_load(const char *path, void **buf)
 	if (file_get_info(file, &info) != EFI_SUCCESS)
 		return -1;
 
+	if (info->attribute & EFI_FILE_DIRECTORY)
+		return -1;
+
 	uint_native bufSize = info->fileSize;
 	free(info);
 
