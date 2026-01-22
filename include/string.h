@@ -17,7 +17,7 @@ int strcmp(const char *s1, const char *s2);
 int strncmp(const char *s1, const char *s2, size_t n);
 
 size_t wcslen(const wchar_t *p);
-wchar_t *wcscpy(wchar_t *dst, wchar_t *src);
+wchar_t *wcscpy(wchar_t *dst, const wchar_t *src);
 
 size_t wcs2str(char *str, const wchar_t *wcs);
 size_t str2wcs(wchar_t *wcs, const char *str);
