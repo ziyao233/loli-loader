@@ -31,23 +31,41 @@ file_init(void)
 	efi_method(fs, openVolume, &root);
 }
 
+
+/*
+ * Fix path separator problems
+ *
+ * - Translate '/' to '\'
+ * - Combine multiple contiguous '\' into one
+ */
+static void
+fix_path(wchar_t *path)
+{
+	wchar_t *cur = path;
+	for (wchar_t *p = path; *p; p++) {
+		*cur = *p == '/' ? '\\' : *p;
+		if (cur == path || cur[-1] != '\\' || *cur != '\\')
+			cur++;
+	}
+	*cur = 0;
+}
+
 Efi_File_Protocol *
 file_open(const wchar_t *path)
 {
 	Efi_File_Protocol *file = NULL;
 	Efi_Status ret;
-retry:
+
+	wchar_t *fixedPath = malloc((wcslen(path) + 1) * sizeof(wchar_t));
+	wcscpy(fixedPath, path);
+	fix_path(fixedPath);
+
 	ret = efi_method(root, open, &file,
-			 (wchar_t *)path, EFI_FILE_MODE_READ, 0);
+			 (wchar_t *)fixedPath, EFI_FILE_MODE_READ, 0);
 	if (ret != EFI_SUCCESS)
 		file = NULL;
 
-	/* EDK2 compatibility: EDK2 doesn't accept paths starting with '/' */
-	if (!file && (char)path[0] == '/') {
-		path++;
-		goto retry;
-	}
-
+	free(fixedPath);
 	return file;
 }
 
