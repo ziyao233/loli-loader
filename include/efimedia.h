@@ -32,10 +32,28 @@
 struct Efi_Device_Path_Protocol;
 
 typedef struct {
+	uint16_t Year;
+	uint8_t Month;
+	uint8_t Day;
+	uint8_t Hour;
+	uint8_t Minute;
+	uint8_t Second;
+	uint8_t Pad1;
+	uint32_t Nanosecond;
+	int16_t TimeZone;
+	uint8_t Daylight;
+	uint8_t Pad2;
+} Efi_Time;
+
+typedef struct {
 	uint64_t size;
 	uint64_t fileSize;
 	uint64_t physicalSize;
-	char reserved[];		// we don't care about these fields
+	Efi_Time createTime;
+	Efi_Time lastAccessTime;
+	Efi_Time modificationTime;
+	uint64_t attribute;
+	wchar_t fileName[];
 } Efi_File_Info;
 
 struct Efi_File_Protocol;
