@@ -66,7 +66,7 @@ wcslen(const wchar_t *p)
 }
 
 wchar_t *
-wcscpy(wchar_t *dst, wchar_t *src)
+wcscpy(wchar_t *dst, const wchar_t *src)
 {
 	wchar_t *org = dst;
 	while (*src)
