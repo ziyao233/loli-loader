@@ -31,33 +31,66 @@ file_init(void)
 	efi_method(fs, openVolume, &root);
 }
 
-static Efi_File_Protocol *
-open_file_handle(const char *path)
+Efi_File_Protocol *
+file_open(const wchar_t *path)
 {
-	size_t wlen = str2wcs(NULL, path);
-	wchar_t *wpath = malloc(sizeof(wchar_t) * (wlen + 1));
-	str2wcs(wpath, path);
-
 	Efi_File_Protocol *file = NULL;
+	Efi_Status ret;
 retry:
-	if (efi_method(root, open, &file, wpath, EFI_FILE_MODE_READ, 0) !=
-	    EFI_SUCCESS)
+	ret = efi_method(root, open, &file,
+			 (wchar_t *)path, EFI_FILE_MODE_READ, 0);
+	if (ret != EFI_SUCCESS)
 		file = NULL;
 
 	/* EDK2 compatibility: EDK2 doesn't accept paths starting with '/' */
-	if (!file && (char)wpath[0] == '/') {
-		for (size_t i = 0; i < wlen - 1; i++)
-			wpath[i] = wpath[i + 1];
-		wpath[wlen - 1] = 0;
+	if (!file && (char)path[0] == '/') {
+		path++;
 		goto retry;
 	}
 
-	free(wpath);
 	return file;
 }
 
-static void
-close_file_handle(Efi_File_Protocol *file)
+static Efi_File_Protocol *
+file_open_str(const char *path)
+{
+	wchar_t *wpath = malloc((str2wcs(NULL, path) + 1) * sizeof(wchar_t));
+	str2wcs(wpath, path);
+
+	Efi_File_Protocol *file = file_open(wpath);
+	free(wpath);
+
+	return file;
+}
+
+Efi_Status
+file_get_info(Efi_File_Protocol *file, Efi_File_Info **info)
+{
+	Efi_Guid efiFileInfo = EFI_FILE_INFO_GUID;
+	Efi_Status ret;
+
+	*info = NULL;
+	size_t size = 0;
+
+	ret = efi_method(file, getInfo, &efiFileInfo, &size, NULL);
+	if (ret == EFI_SUCCESS)
+		return EFI_INVALID_PARAMETER; // Shouldn't happen
+
+	if (ret != TO_EFI_ERRNO(EFI_BUFFER_TOO_SMALL))
+		return ret;
+
+	*info = malloc(size);
+	ret = efi_method(file, getInfo, &efiFileInfo, &size, *info);
+	if (ret != EFI_SUCCESS) {
+		free(*info);
+		*info = NULL;
+	}
+
+	return ret;
+}
+
+void
+file_close(Efi_File_Protocol *file)
 {
 	efi_call(file->close, file);
 }
@@ -65,38 +98,37 @@ close_file_handle(Efi_File_Protocol *file)
 int64_t
 file_get_size(const char *path)
 {
-	Efi_File_Protocol *file = open_file_handle(path);
+	Efi_File_Protocol *file = file_open_str(path);
+	Efi_File_Info *info;
+
 	if (!file)
 		return -1;
 
-	// more than double of FAT32 max path length
-	uint_native bufSize = 768;
-	Efi_File_Info *info = malloc(bufSize);
-	Efi_Guid efiFileInfo = EFI_FILE_INFO_GUID;
-	efi_method(file, getInfo, &efiFileInfo, &bufSize, info);
+	if (file_get_info(file, &info) != EFI_SUCCESS)
+		return -1;
 
 	uint64_t fileSize = info->fileSize;
 	free(info);
-	close_file_handle(file);
+	file_close(file);
 	return (int64_t)fileSize;
 }
 
 int64_t
 file_load(const char *path, void **buf)
 {
-	int64_t size = file_get_size(path);
-	if (size < 0)
-		return -1;
-
-	Efi_File_Protocol *file = open_file_handle(path);
+	Efi_File_Protocol *file = file_open_str(path);
 	if (!file)
 		return -1;
 
-	if (!*buf)
-		*buf = malloc(size);
-	uint_native bufSize = size;
+	Efi_File_Info *info;
+	if (file_get_info(file, &info) != EFI_SUCCESS)
+		return -1;
+
+	uint_native bufSize = info->fileSize;
+	free(info);
+
 	efi_method(file, read, &bufSize, *buf);
 
-	close_file_handle(file);
-	return size;
+	file_close(file);
+	return (int64_t)bufSize;
 }
