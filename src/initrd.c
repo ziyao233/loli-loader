@@ -85,8 +85,6 @@ initrd_setup(void *base, size_t size)
 	Efi_Status ret;
 
 	initrdProtocol = malloc(sizeof(*initrdProtocol));
-	if (!initrdProtocol)
-		return EFI_OUT_OF_RESOURCES;
 
 	*initrdProtocol = (Initrd_Load_File2_Protocol) {
 		.protocol	= {
