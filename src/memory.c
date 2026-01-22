@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include <memory.h>
+#include <misc.h>
 
 void *
 malloc_type(size_t size, Efi_Memory_Type type)
@@ -17,7 +18,10 @@ malloc_type(size_t size, Efi_Memory_Type type)
 	int ret = efi_call(gBS->allocatePool, type,
 			   (uint_native)size, &addr);
 
-	return ret == EFI_SUCCESS ? addr : NULL;
+	if (ret != EFI_SUCCESS)
+		panic("Failed to allocate memory");
+
+	return addr;
 }
 
 void *
