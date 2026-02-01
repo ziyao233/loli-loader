@@ -84,6 +84,12 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 	}
 
 	void *kernelBase = malloc_pages(kernelSize);
+	if (!kernelBase) {
+		pr_err("Unable to allocate memory for kernel image, "
+		       "insufficient memory?\n");
+		goto out_err;
+	}
+
 	int64_t ret = file_load(kernel, &kernelBase);
 	if (ret < 0) {
 		pr_err("Can't load kernel %s\n", kernel);
@@ -106,6 +112,12 @@ load_and_validate_entry(const char *p, Boot_Entry *entry)
 		}
 
 		void *initrdBase = malloc_pages(initrdSize);
+		if (!initrdBase) {
+			pr_err("Unable to allocate memory for initrd, "
+			       "insufficient memory?\n");
+			goto unload_image;
+		}
+
 		initrdSize = file_load(initrd, &initrdBase);
 		if (initrdSize < 0) {
 			pr_err("Can't load initrd %s\n", initrd);
