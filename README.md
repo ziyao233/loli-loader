@@ -19,15 +19,17 @@ with UEFI and Linux bootflow.***
 - Building involves a Python script taken from systemd-boot, there's a plan to
   rewrite it in Lua or C.
 - Extlinux-style configuration. I don't want to create one more new format.
+- Characters out of ASCII character set aren't well handled, which means the
+  configuration file could only contain ASCII characters.
 
 ![xkcd 927: standards](https://imgs.xkcd.com/comics/standards.png)
 
 ## Supported Platforms
 
-- x86_64 (amd64): ACPI
-- riscv64: devicetree and ACPI
-- loongarch64: devicetree (untested) and ACPI
 - aarch64: devicetree and ACPI
+- loongarch64: devicetree (untested) and ACPI
+- riscv64: devicetree and ACPI
+- x86_64 (amd64): ACPI
 
 ## Configuration File
 
