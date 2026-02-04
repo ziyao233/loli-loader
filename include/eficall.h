@@ -13,13 +13,13 @@
 #define efi_call(f, ...) ((f)(__VA_ARGS__))
 #elif defined(LOLI_TARGET_X86_64)
 
-int __efi_call1(unsigned long int, ...);
-int __efi_call2(unsigned long int, ...);
-int __efi_call3(unsigned long int, ...);
-int __efi_call4(unsigned long int, ...);
-int __efi_call5(unsigned long int, ...);
-int __efi_call6(unsigned long int, ...);
-int __efi_call10(unsigned long int, ...);
+unsigned long __efi_call1(unsigned long int, ...);
+unsigned long __efi_call2(unsigned long int, ...);
+unsigned long __efi_call3(unsigned long int, ...);
+unsigned long __efi_call4(unsigned long int, ...);
+unsigned long __efi_call5(unsigned long int, ...);
+unsigned long __efi_call6(unsigned long int, ...);
+unsigned long __efi_call10(unsigned long int, ...);
 
 #define __arg(x) ((unsigned long int)(x))
 #define _efi_call1(x, a) \
