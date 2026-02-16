@@ -12,8 +12,6 @@ with UEFI and Linux bootflow.***
   parititions in the future, but are still limited by the types supported by
   UEFI firmware (most of the time this just means FAT-family).
 - Loads EFI binaries only (for Linux kernels, EFIstub must be enabled).
-- For devicetree systems, `EFI_DT_FIXUP_PROTOCOL_GUID` must be implemented in
-  firwmare to correctly fix up devicetrees, since we don't carry a libfdt.
 - initrd is passed through `LINUX_EFI_INITRD_MEDIA_GUID` configuration table,
   which is only supported by Linux 6.1 or later.
 - Building involves a Python script taken from systemd-boot, there's a plan to
@@ -66,6 +64,8 @@ label l2
 - `kernel`
 - `initrd`: Optional
 - `append`: Optional, command arguments to be passed to the kernel.
+- `fdt` (alias `devicetree`): Optional, loads and install file as DTB
+  configuration table, replacing the existing devicetree if there was any.
 - `menu title`: Optional, pretty description of the entry. When unspecified,
   the entry's label is shown in boot menu instead.
 
